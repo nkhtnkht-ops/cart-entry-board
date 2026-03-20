@@ -1,0 +1,2302 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>フェアウェイカート乗入れ共有ボード</title>
+
+<style>
+
+  :root {
+
+    --green-dark: #1a5c2e;
+
+    --green-mid: #2d8a4e;
+
+    --green-light: #e8f5e9;
+
+    --green-pale: #f1f8f3;
+
+    --ok-color: #2196F3;
+
+    --ng-color: #e53935;
+
+    --undecided-color: #9e9e9e;
+
+    --border: #c8e6c9;
+
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+
+    --dept-course: #2e7d32;
+
+    --dept-office: #1565c0;
+
+    --dept-front: #e65100;
+
+    --dept-master: #6a1b9a;
+
+    --dept-restaurant: #c62828;
+
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+
+    background: #f4f7f5;
+
+    color: #333;
+
+    min-height: 100vh;
+
+    min-height: 100dvh;
+
+  }
+
+
+
+  /* ===== Header ===== */
+
+  .header {
+
+    background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+
+    color: #fff;
+
+    padding: 14px 20px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 100;
+
+  }
+
+  .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+
+  .header .subtitle { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+  .header .club-name { font-size: 13px; opacity: 0.95; text-align: right; font-weight: 600; }
+
+  .header .today-info { font-size: 10px; opacity: 0.75; margin-top: 2px; text-align: right; }
+
+  .header .settings-btn {
+
+    background: rgba(255,255,255,0.2);
+
+    border: 1px solid rgba(255,255,255,0.4);
+
+    color: #fff;
+
+    border-radius: 6px;
+
+    padding: 6px 10px;
+
+    cursor: pointer;
+
+    font-size: 12px;
+
+    margin-left: 8px;
+
+    transition: background 0.2s;
+
+    white-space: nowrap;
+
+  }
+
+  .header .settings-btn:hover { background: rgba(255,255,255,0.35); }
+
+
+
+  /* Connection indicator */
+
+  .conn-badge {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 4px;
+
+    font-size: 10px;
+
+    padding: 2px 8px;
+
+    border-radius: 10px;
+
+    margin-top: 3px;
+
+  }
+
+  .conn-badge.online { background: rgba(76,175,80,0.3); color: #c8e6c9; }
+
+  .conn-badge.offline { background: rgba(255,152,0,0.3); color: #ffe0b2; }
+
+  .conn-badge .conn-dot {
+
+    width: 6px; height: 6px; border-radius: 50%;
+
+  }
+
+  .conn-badge.online .conn-dot { background: #4caf50; }
+
+  .conn-badge.offline .conn-dot { background: #ff9800; }
+
+
+
+  /* ===== Modal ===== */
+
+  .modal-overlay {
+
+    display: none;
+
+    position: fixed;
+
+    top: 0; left: 0; right: 0; bottom: 0;
+
+    background: rgba(0,0,0,0.5);
+
+    z-index: 1000;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 16px;
+
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+
+    background: #fff;
+
+    border-radius: 14px;
+
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+
+    width: 560px;
+
+    max-width: 100%;
+
+    max-height: 90vh;
+
+    overflow-y: auto;
+
+  }
+
+  .modal-header {
+
+    background: var(--green-pale);
+
+    padding: 14px 18px;
+
+    border-bottom: 2px solid var(--border);
+
+    font-weight: 700;
+
+    font-size: 15px;
+
+    color: var(--green-dark);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 1;
+
+  }
+
+  .modal-header .close-btn {
+
+    background: none; border: none; font-size: 22px; cursor: pointer;
+
+    color: #888; padding: 0 4px; line-height: 1;
+
+  }
+
+  .modal-header .close-btn:hover { color: #333; }
+
+  .modal-body { padding: 18px; }
+
+  .modal-body label {
+
+    display: block; font-size: 13px; font-weight: 600;
+
+    color: #555; margin-bottom: 4px; margin-top: 14px;
+
+  }
+
+  .modal-body label:first-child { margin-top: 0; }
+
+  .modal-body input, .modal-body select {
+
+    width: 100%;
+
+    border: 1px solid #ccc;
+
+    border-radius: 6px;
+
+    padding: 9px 10px;
+
+    font-size: 14px;
+
+    font-family: inherit;
+
+  }
+
+  .modal-body input:focus, .modal-body select:focus {
+
+    outline: none;
+
+    border-color: var(--green-mid);
+
+    box-shadow: 0 0 0 2px rgba(45,138,78,0.15);
+
+  }
+
+  .modal-body .hint { font-size: 11px; color: #999; margin-top: 3px; }
+
+  .modal-body .section-title {
+
+    font-size: 14px; font-weight: 700; color: var(--green-dark);
+
+    border-top: 1px solid #eee; padding-top: 16px; margin-top: 18px; margin-bottom: 2px;
+
+  }
+
+  .modal-body .preset-list {
+
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 6px;
+
+    margin-top: 8px;
+
+  }
+
+  .modal-body .preset-btn {
+
+    background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px;
+
+    padding: 8px 10px; cursor: pointer; font-size: 12px;
+
+    text-align: left; transition: all 0.15s; font-family: inherit;
+
+  }
+
+  .modal-body .preset-btn:hover { background: var(--green-light); border-color: var(--green-mid); }
+
+  .modal-body .coord-row {
+
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+
+  }
+
+  .modal-body .coord-row label { margin-top: 14px; }
+
+  .modal-body .firebase-section {
+
+    background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px;
+
+    padding: 14px; margin-top: 6px;
+
+  }
+
+  .modal-body .firebase-section input {
+
+    font-size: 12px; font-family: 'Courier New', monospace;
+
+  }
+
+  .modal-body .fb-status {
+
+    display: flex; align-items: center; gap: 6px;
+
+    padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-top: 8px;
+
+  }
+
+  .modal-body .fb-status.connected { background: #e8f5e9; color: #2e7d32; }
+
+  .modal-body .fb-status.disconnected { background: #fff3e0; color: #e65100; }
+
+  .modal-footer {
+
+    padding: 14px 18px;
+
+    border-top: 1px solid #eee;
+
+    display: flex; gap: 10px; justify-content: flex-end;
+
+  }
+
+  .modal-footer button {
+
+    padding: 9px 20px; border-radius: 6px; font-size: 14px;
+
+    font-weight: 600; cursor: pointer; border: none; font-family: inherit;
+
+  }
+
+  .modal-footer .btn-cancel { background: #eee; color: #555; }
+
+  .modal-footer .btn-save { background: var(--green-mid); color: #fff; }
+
+  .modal-footer .btn-save:hover { background: var(--green-dark); }
+
+
+
+  /* ===== Today status bar ===== */
+
+  .today-status-bar {
+
+    max-width: 1280px; margin: 14px auto 0; padding: 0 16px;
+
+  }
+
+  .today-status-card {
+
+    background: #fff; border-radius: 12px; box-shadow: var(--shadow);
+
+    padding: 14px 20px;
+
+    display: flex; align-items: center; justify-content: space-between;
+
+    gap: 16px; flex-wrap: wrap;
+
+  }
+
+  .today-status-card .ts-label { font-size: 13px; color: #666; }
+
+  .today-status-card .ts-value {
+
+    font-size: 20px; font-weight: 800;
+
+    display: flex; align-items: center; gap: 8px;
+
+  }
+
+  .today-status-card .ts-value.ok { color: var(--ok-color); }
+
+  .today-status-card .ts-value.ng { color: var(--ng-color); }
+
+  .today-status-card .ts-value.undecided { color: var(--undecided-color); }
+
+  .today-status-card .ts-note { font-size: 13px; color: #555; flex: 1; min-width: 120px; }
+
+  .today-status-card .ts-weather { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+
+
+
+  /* ===== Main layout ===== */
+
+  .main {
+
+    max-width: 1280px; margin: 0 auto; padding: 16px;
+
+    display: grid; grid-template-columns: 1fr 340px; gap: 16px;
+
+  }
+
+
+
+  /* ===== Card ===== */
+
+  .card {
+
+    background: #fff; border-radius: 12px;
+
+    box-shadow: var(--shadow); overflow: hidden;
+
+  }
+
+  .card-header {
+
+    background: var(--green-pale);
+
+    border-bottom: 2px solid var(--border);
+
+    padding: 12px 16px; font-weight: 700; font-size: 14px;
+
+    color: var(--green-dark);
+
+    display: flex; align-items: center; gap: 8px;
+
+  }
+
+  .card-body { padding: 14px 16px; }
+
+
+
+  /* ===== Calendar ===== */
+
+  .cal-nav {
+
+    display: flex; align-items: center; justify-content: space-between;
+
+    margin-bottom: 10px;
+
+  }
+
+  .cal-nav button {
+
+    background: var(--green-mid); color: #fff; border: none;
+
+    border-radius: 6px; padding: 6px 14px; cursor: pointer;
+
+    font-size: 13px; transition: background 0.2s;
+
+  }
+
+  .cal-nav button:hover { background: var(--green-dark); }
+
+  .cal-nav .month-label { font-size: 17px; font-weight: 700; color: var(--green-dark); }
+
+
+
+  .cal-grid {
+
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+
+  }
+
+  .cal-dow {
+
+    text-align: center; font-size: 11px; font-weight: 700;
+
+    color: #666; padding: 3px 0;
+
+  }
+
+  .cal-dow.sun { color: #e53935; }
+
+  .cal-dow.sat { color: #1565c0; }
+
+
+
+  .cal-cell {
+
+    min-height: 68px; border-radius: 7px; padding: 3px 5px;
+
+    font-size: 12px; cursor: pointer; border: 2px solid transparent;
+
+    transition: all 0.15s; background: #fafafa;
+
+  }
+
+  .cal-cell:hover { border-color: var(--green-mid); }
+
+  .cal-cell.today { border-color: var(--green-mid); background: var(--green-light); }
+
+  .cal-cell.empty { background: transparent; cursor: default; border-color: transparent; }
+
+  .cal-cell .day-num { font-weight: 700; font-size: 13px; }
+
+  .cal-cell .day-num.sun { color: #e53935; }
+
+  .cal-cell .day-num.sat { color: #1565c0; }
+
+  .cal-cell .status-badge {
+
+    display: inline-block; font-size: 9px; font-weight: 700;
+
+    padding: 1px 6px; border-radius: 8px; margin-top: 2px; color: #fff;
+
+  }
+
+  .badge-ok { background: var(--ok-color); }
+
+  .badge-ng { background: var(--ng-color); }
+
+  .cal-cell .weather-mini {
+
+    font-size: 9px; color: #666; margin-top: 1px; line-height: 1.2;
+
+  }
+
+  .cal-cell .weather-mini .wx-icon { font-size: 12px; }
+
+  .selected-cell { border-color: var(--green-dark) !important; background: #dcedc8 !important; }
+
+
+
+  /* ===== Detail panel ===== */
+
+  .detail-panel {
+
+    margin-top: 12px; padding: 14px; background: var(--green-pale);
+
+    border-radius: 10px; display: none;
+
+  }
+
+  .detail-panel.active { display: block; }
+
+  .detail-panel h3 { font-size: 14px; margin-bottom: 10px; color: var(--green-dark); }
+
+  .detail-panel .status-selector { display: flex; gap: 8px; margin-bottom: 10px; }
+
+  .status-btn {
+
+    flex: 1; padding: 10px 8px; border: 2px solid #ccc; border-radius: 8px;
+
+    background: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+
+    text-align: center; transition: all 0.2s;
+
+  }
+
+  .status-btn:hover { transform: translateY(-1px); }
+
+  .status-btn.sel-ok { border-color: var(--ok-color); background: #e3f2fd; color: var(--ok-color); }
+
+  .status-btn.sel-ng { border-color: var(--ng-color); background: #ffebee; color: var(--ng-color); }
+
+  .status-btn.sel-clear { border-color: var(--undecided-color); background: #f5f5f5; color: var(--undecided-color); }
+
+  .detail-panel textarea {
+
+    width: 100%; border: 1px solid #ccc; border-radius: 6px;
+
+    padding: 8px; font-size: 13px; resize: vertical;
+
+    min-height: 48px; font-family: inherit;
+
+  }
+
+  .detail-panel .save-btn {
+
+    margin-top: 8px; background: var(--green-mid); color: #fff;
+
+    border: none; border-radius: 6px; padding: 8px 20px;
+
+    cursor: pointer; font-size: 14px; font-weight: 600;
+
+  }
+
+  .detail-panel .save-btn:hover { background: var(--green-dark); }
+
+
+
+  /* ===== Weather ===== */
+
+  .weather-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .weather-item {
+
+    display: grid; grid-template-columns: 64px 36px 1fr;
+
+    align-items: center; gap: 6px; padding: 7px 8px;
+
+    background: #fafafa; border-radius: 7px; font-size: 12px;
+
+  }
+
+  .weather-item.today-wx { background: var(--green-light); font-weight: 600; }
+
+  .weather-item .wx-icon { font-size: 20px; text-align: center; }
+
+  .weather-item .wx-detail { line-height: 1.4; }
+
+  .weather-item .wx-temp { font-weight: 600; }
+
+  .weather-item .wx-rain { color: #1565c0; font-size: 11px; }
+
+
+
+  /* ===== Message board ===== */
+
+  .msg-list {
+
+    max-height: 380px; overflow-y: auto;
+
+    display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;
+
+  }
+
+  .msg-item {
+
+    background: #fafafa; border-radius: 8px; padding: 10px 12px;
+
+    font-size: 13px; border-left: 4px solid var(--green-mid);
+
+  }
+
+  .msg-item.dept-course     { border-left-color: var(--dept-course);     background: #e8f5e9; }
+
+  .msg-item.dept-office     { border-left-color: var(--dept-office);     background: #e3f2fd; }
+
+  .msg-item.dept-front      { border-left-color: var(--dept-front);      background: #fff3e0; }
+
+  .msg-item.dept-master     { border-left-color: var(--dept-master);     background: #f3e5f5; }
+
+  .msg-item.dept-restaurant { border-left-color: var(--dept-restaurant); background: #ffebee; }
+
+  .msg-item .msg-meta {
+
+    font-size: 11px; color: #666; margin-bottom: 4px;
+
+    display: flex; justify-content: space-between; align-items: center;
+
+  }
+
+  .msg-item .msg-dept-tag {
+
+    display: inline-block; font-size: 10px; font-weight: 700;
+
+    padding: 1px 7px; border-radius: 10px; color: #fff;
+
+  }
+
+  .msg-dept-tag.tag-course     { background: var(--dept-course); }
+
+  .msg-dept-tag.tag-office     { background: var(--dept-office); }
+
+  .msg-dept-tag.tag-front      { background: var(--dept-front); }
+
+  .msg-dept-tag.tag-master     { background: var(--dept-master); }
+
+  .msg-dept-tag.tag-restaurant { background: var(--dept-restaurant); }
+
+  .msg-item .msg-meta .msg-delete {
+
+    color: #999; cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 4px;
+
+  }
+
+  .msg-item .msg-meta .msg-delete:hover { background: #ffebee; color: #e53935; }
+
+  .msg-item .msg-text { line-height: 1.5; word-break: break-word; margin-top: 4px; }
+
+
+
+  .msg-form { display: flex; flex-direction: column; gap: 8px; }
+
+  .msg-form select, .msg-form textarea {
+
+    border: 1px solid #ccc; border-radius: 6px; padding: 8px;
+
+    font-size: 13px; font-family: inherit;
+
+  }
+
+  .msg-form textarea { min-height: 56px; resize: vertical; }
+
+  .msg-form .post-btn {
+
+    background: var(--green-mid); color: #fff; border: none;
+
+    border-radius: 6px; padding: 10px; cursor: pointer;
+
+    font-weight: 600; font-size: 14px;
+
+  }
+
+  .msg-form .post-btn:hover { background: var(--green-dark); }
+
+
+
+  .dept-legend {
+
+    display: flex; flex-wrap: wrap; gap: 6px;
+
+    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;
+
+  }
+
+  .dept-legend-item { display: flex; align-items: center; gap: 3px; font-size: 10px; color: #555; }
+
+  .dept-legend-item .dept-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+
+
+  .legend {
+
+    display: flex; gap: 12px; font-size: 11px; margin-top: 8px; flex-wrap: wrap;
+
+  }
+
+  .legend span { display: flex; align-items: center; gap: 4px; }
+
+  .legend .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+
+
+
+  .loading { text-align: center; padding: 16px; color: #999; font-size: 13px; }
+
+
+
+  /* ===== Responsive: Tablet & Mobile ===== */
+
+  @media (max-width: 960px) {
+
+    .main { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+
+    .header h1 { font-size: 16px; }
+
+  }
+
+  @media (max-width: 600px) {
+
+    .header { padding: 10px 14px; }
+
+    .header h1 { font-size: 14px; }
+
+    .header .subtitle { font-size: 10px; }
+
+    .header .club-name { font-size: 11px; }
+
+    .today-status-card { padding: 12px 14px; gap: 10px; }
+
+    .today-status-card .ts-value { font-size: 18px; }
+
+    .cal-cell { min-height: 56px; padding: 2px 3px; }
+
+    .cal-cell .day-num { font-size: 12px; }
+
+    .cal-cell .status-badge { font-size: 8px; padding: 1px 4px; }
+
+    .cal-cell .weather-mini { font-size: 8px; }
+
+    .cal-cell .weather-mini .wx-icon { font-size: 10px; }
+
+    .modal-body .preset-list { grid-template-columns: 1fr; }
+
+    .modal-body .coord-row { grid-template-columns: 1fr; }
+
+  }
+
+
+
+  @media print {
+
+    .header { background: #333 !important; -webkit-print-color-adjust: exact; }
+
+    .card { break-inside: avoid; }
+
+    .modal-overlay { display: none !important; }
+
+  }
+
+</style>
+
+</head>
+
+<body>
+
+
+
+<!-- ===== Settings Modal ===== -->
+
+<div class="modal-overlay" id="settingsModal">
+
+  <div class="modal">
+
+    <div class="modal-header">
+
+      <span>⚙️ コース・接続設定</span>
+
+      <button class="close-btn" onclick="closeSettings()">&times;</button>
+
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Course info -->
+
+      <label>ゴルフ場名称</label>
+
+      <input type="text" id="settCourseName" placeholder="例：泉佐野カントリークラブ">
+
+      <div class="hint">ヘッダーに表示されるゴルフ場名です</div>
+
+
+
+      <label>運営会社名</label>
+
+      <input type="text" id="settCompanyName" placeholder="例：アコーディア・ゴルフ">
+
+
+
+      <!-- Weather -->
+
+      <div class="section-title">🌤️ 天気予報の取得地域</div>
+
+      <label>地域名</label>
+
+      <input type="text" id="settAreaName" placeholder="例：泉佐野">
+
+      <div class="hint">天気予報カードのタイトルに表示されます</div>
+
+
+
+      <div class="coord-row">
+
+        <div>
+
+          <label>緯度（Latitude）</label>
+
+          <input type="number" step="0.01" id="settLat" placeholder="例：34.40">
+
+        </div>
+
+        <div>
+
+          <label>経度（Longitude）</label>
+
+          <input type="number" step="0.01" id="settLon" placeholder="例：135.33">
+
+        </div>
+
+      </div>
+
+      <div class="hint">Google Mapでコースの位置を右クリック → 座標をコピーできます</div>
+
+
+
+      <label style="margin-top:14px;">プリセットから選択</label>
+
+      <div class="preset-list" id="presetList"></div>
+
+
+
+      <!-- Firebase -->
+
+      <div class="section-title">🔗 Firebase接続（複数端末リアルタイム共有）</div>
+
+      <div class="firebase-section">
+
+        <label style="margin-top:0;">Firebase Realtime Database URL</label>
+
+        <input type="text" id="settFirebaseUrl" placeholder="例：https://your-project-id-default-rtdb.firebaseio.com">
+
+        <div class="hint">Firebase Consoleで作成したRealtime DatabaseのURLを貼り付けてください</div>
+
+
+
+        <label>API Key</label>
+
+        <input type="text" id="settFirebaseKey" placeholder="例：AIzaSy...">
+
+        <div class="hint">Firebaseプロジェクト設定 → ウェブアプリ → apiKey の値</div>
+
+
+
+        <div class="fb-status disconnected" id="fbStatusDisplay">
+
+          <span>⚠️</span> <span id="fbStatusText">Firebase未接続（ローカル保存モード）</span>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+
+      <button class="btn-cancel" onclick="closeSettings()">キャンセル</button>
+
+      <button class="btn-save" onclick="saveSettings()">💾 保存して適用</button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<!-- ===== Header ===== -->
+
+<div class="header">
+
+  <div>
+
+    <h1>🏌️ フェアウェイカート乗入れ共有ボード</h1>
+
+    <div class="subtitle">コース管理課 ↔ 事務所 連絡システム</div>
+
+  </div>
+
+  <div style="display:flex; align-items:center; gap:6px;">
+
+    <div>
+
+      <div class="club-name" id="headerClubName">ゴルフ場未設定</div>
+
+      <div class="today-info" id="todayInfo"></div>
+
+      <div class="conn-badge offline" id="connBadge">
+
+        <span class="conn-dot"></span><span id="connText">ローカル</span>
+
+      </div>
+
+    </div>
+
+    <button class="settings-btn" onclick="openSettings()">⚙️ 設定</button>
+
+  </div>
+
+</div>
+
+
+
+<!-- Today's status -->
+
+<div class="today-status-bar">
+
+  <div class="today-status-card">
+
+    <div>
+
+      <div class="ts-label">本日のカート乗入れ</div>
+
+      <div class="ts-value undecided" id="todayStatusValue">― 未設定 ―</div>
+
+    </div>
+
+    <div class="ts-note" id="todayStatusNote"></div>
+
+    <div class="ts-weather" id="todayWeatherSummary"></div>
+
+  </div>
+
+</div>
+
+
+
+<div class="main">
+
+  <!-- Left: Calendar -->
+
+  <div>
+
+    <div class="card">
+
+      <div class="card-header">📅 カレンダー（カート乗入れ状況）</div>
+
+      <div class="card-body">
+
+        <div class="cal-nav">
+
+          <button onclick="changeMonth(-1)">◀ 前月</button>
+
+          <span class="month-label" id="monthLabel"></span>
+
+          <button onclick="changeMonth(1)">次月 ▶</button>
+
+        </div>
+
+        <div class="cal-grid" id="calGrid"></div>
+
+        <div class="legend">
+
+          <span><span class="dot" style="background:var(--ok-color)"></span> 乗入れ可</span>
+
+          <span><span class="dot" style="background:var(--ng-color)"></span> 乗入れ不可</span>
+
+          <span><span class="dot" style="background:var(--undecided-color)"></span> 未設定</span>
+
+        </div>
+
+        <div class="detail-panel" id="detailPanel">
+
+          <h3 id="detailTitle"></h3>
+
+          <div class="status-selector">
+
+            <div class="status-btn" data-status="ok" onclick="selectStatus('ok')">✅ 乗入れ可</div>
+
+            <div class="status-btn" data-status="ng" onclick="selectStatus('ng')">🚫 乗入れ不可</div>
+
+            <div class="status-btn" data-status="clear" onclick="selectStatus('clear')">✖ クリア</div>
+
+          </div>
+
+          <label style="font-size:13px; color:#555; margin-bottom:4px; display:block;">備考（理由など）</label>
+
+          <textarea id="detailNote" placeholder="例：前日の大雨によりフェアウェイ軟弱のため"></textarea>
+
+          <button class="save-btn" onclick="saveDetail()">💾 保存</button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Right: Weather + Messages -->
+
+  <div style="display:flex; flex-direction:column; gap:16px;">
+
+    <div class="card">
+
+      <div class="card-header" id="weatherHeader">🌤️ 7日間天気予報</div>
+
+      <div class="card-body">
+
+        <div class="weather-list" id="weatherList">
+
+          <div class="loading">天気データを取得中...</div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+
+    <div class="card">
+
+      <div class="card-header">💬 部門間連絡ボード</div>
+
+      <div class="card-body">
+
+        <div class="dept-legend">
+
+          <div class="dept-legend-item"><span class="dept-dot" style="background:var(--dept-course)"></span>コース管理課</div>
+
+          <div class="dept-legend-item"><span class="dept-dot" style="background:var(--dept-office)"></span>事務所</div>
+
+          <div class="dept-legend-item"><span class="dept-dot" style="background:var(--dept-front)"></span>フロント</div>
+
+          <div class="dept-legend-item"><span class="dept-dot" style="background:var(--dept-master)"></span>マスター室</div>
+
+          <div class="dept-legend-item"><span class="dept-dot" style="background:var(--dept-restaurant)"></span>レストラン</div>
+
+        </div>
+
+        <div class="msg-list" id="msgList"></div>
+
+        <div class="msg-form">
+
+          <select id="msgDept">
+
+            <option value="コース管理課">コース管理課</option>
+
+            <option value="事務所">事務所</option>
+
+            <option value="フロント">フロント</option>
+
+            <option value="マスター室">マスター室</option>
+
+            <option value="レストラン">レストラン</option>
+
+          </select>
+
+          <textarea id="msgText" placeholder="連絡事項を入力..."></textarea>
+
+          <button class="post-btn" onclick="postMessage()">📤 投稿する</button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<!-- ===== Firebase SDK (compat v9) ===== -->
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+
+
+<script>
+
+// ============================================================
+
+//  STATE
+
+// ============================================================
+
+let currentYear, currentMonth, selectedDate = null;
+
+let cartData = {};
+
+let messages = [];
+
+let weatherCache = {};
+
+let siteConfig = {
+
+  courseName: '', companyName: '', areaName: '',
+
+  lat: null, lon: null,
+
+  firebaseUrl: '', firebaseKey: ''
+
+};
+
+
+
+let firebaseApp = null;
+
+let db = null;
+
+let useFirebase = false;
+
+let fbListenersAttached = false;
+
+
+
+const STORAGE_KEY_CONFIG = 'cart_board_site_config';
+
+
+
+// ============================================================
+
+//  PRESETS
+
+// ============================================================
+
+const PRESETS = [
+
+  { name: '泉佐野カントリークラブ', company: 'アコーディア・ゴルフ', area: '泉佐野', lat: 34.40, lon: 135.33 },
+
+  { name: '石岡ゴルフ倶楽部', company: 'アコーディア・ゴルフ', area: '石岡', lat: 36.30, lon: 140.27 },
+
+  { name: '翠志野カントリークラブ', company: 'アコーディア・ゴルフ', area: '印西', lat: 35.80, lon: 140.15 },
+
+  { name: '南総カントリークラブ', company: 'アコーディア・ゴルフ', area: '市原', lat: 35.37, lon: 140.13 },
+
+  { name: '富士カントリークラブ', company: 'アコーディア・ゴルフ', area: '御殿場', lat: 35.28, lon: 138.88 },
+
+  { name: 'ザ・カントリークラブ・ジャパン', company: 'アコーディア・ゴルフ', area: '富津', lat: 35.25, lon: 139.85 },
+
+  { name: '鳴尾ゴルフ倶楽部', company: 'アコーディア・ゴルフ', area: '三木', lat: 34.82, lon: 135.00 },
+
+  { name: 'その他（手入力）', company: '', area: '', lat: null, lon: null },
+
+];
+
+
+
+const DEPT_MAP = {
+
+  'コース管理課': 'course',
+
+  '事務所':       'office',
+
+  'フロント':     'front',
+
+  'マスター室':   'master',
+
+  'レストラン':   'restaurant',
+
+};
+
+
+
+// ============================================================
+
+//  INIT
+
+// ============================================================
+
+function init() {
+
+  const now = new Date();
+
+  currentYear = now.getFullYear();
+
+  currentMonth = now.getMonth();
+
+
+
+  loadConfig();
+
+  initFirebase();
+
+  loadData();
+
+  applyConfig();
+
+  renderCalendar();
+
+  updateTodayInfo();
+
+  updateTodayStatus();
+
+  fetchWeather();
+
+  renderMessages();
+
+  renderPresets();
+
+
+
+  if (!siteConfig.courseName) openSettings();
+
+}
+
+
+
+// ============================================================
+
+//  CONFIG
+
+// ============================================================
+
+function loadConfig() {
+
+  try {
+
+    const c = localStorage.getItem(STORAGE_KEY_CONFIG);
+
+    if (c) Object.assign(siteConfig, JSON.parse(c));
+
+  } catch(e) {}
+
+}
+
+function saveConfigStorage() {
+
+  localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(siteConfig));
+
+}
+
+
+
+function storagePrefix() {
+
+  return 'cb_' + (siteConfig.courseName || 'default').replace(/\s+/g, '_');
+
+}
+
+
+
+// Firebase path uses sanitized course name
+
+function fbPath() {
+
+  return (siteConfig.courseName || 'default').replace(/[.#$/\[\]]/g, '_');
+
+}
+
+
+
+// ============================================================
+
+//  FIREBASE
+
+// ============================================================
+
+function initFirebase() {
+
+  if (firebaseApp) {
+
+    // Cleanup previous listeners
+
+    try {
+
+      if (db) {
+
+        db.ref(fbPath() + '/cart').off();
+
+        db.ref(fbPath() + '/messages').off();
+
+      }
+
+    } catch(e) {}
+
+    fbListenersAttached = false;
+
+  }
+
+
+
+  const url = siteConfig.firebaseUrl;
+
+  const key = siteConfig.firebaseKey;
+
+
+
+  if (!url || !key) {
+
+    useFirebase = false;
+
+    updateConnBadge(false);
+
+    return;
+
+  }
+
+
+
+  try {
+
+    // Extract project ID from URL
+
+    const config = {
+
+      apiKey: key,
+
+      databaseURL: url
+
+    };
+
+
+
+    // Delete existing app if any
+
+    if (firebaseApp) {
+
+      firebaseApp.delete().catch(()=>{});
+
+    }
+
+
+
+    firebaseApp = firebase.initializeApp(config, 'cartBoard_' + Date.now());
+
+    db = firebaseApp.database();
+
+    useFirebase = true;
+
+    updateConnBadge(true);
+
+    attachFirebaseListeners();
+
+  } catch(e) {
+
+    console.error('Firebase初期化エラー:', e);
+
+    useFirebase = false;
+
+    updateConnBadge(false);
+
+  }
+
+}
+
+
+
+function attachFirebaseListeners() {
+
+  if (!db || fbListenersAttached) return;
+
+  const path = fbPath();
+
+
+
+  // Listen for cart data changes (real-time sync)
+
+  db.ref(path + '/cart').on('value', snap => {
+
+    const val = snap.val();
+
+    if (val) {
+
+      cartData = val;
+
+      // Also save locally as cache
+
+      localStorage.setItem(storagePrefix() + '_cart', JSON.stringify(cartData));
+
+      renderCalendar();
+
+      updateTodayStatus();
+
+    } else {
+
+      // Firebase is empty - push local data if available
+
+      if (Object.keys(cartData).length > 0) {
+
+        db.ref(path + '/cart').set(cartData).catch(e => console.error('初回同期エラー(cart):', e));
+
+      }
+
+    }
+
+  }, err => {
+
+    console.error('Firebase cart読取エラー:', err);
+
+    updateConnBadge(false);
+
+  });
+
+
+
+  // Listen for message changes
+
+  db.ref(path + '/messages').on('value', snap => {
+
+    const val = snap.val();
+
+    if (val) {
+
+      messages = Object.values(val);
+
+      localStorage.setItem(storagePrefix() + '_msg', JSON.stringify(messages));
+
+      renderMessages();
+
+    } else {
+
+      // Firebase is empty - push local messages if available
+
+      if (messages.length > 0) {
+
+        const msgObj = {};
+
+        messages.forEach((m, i) => { msgObj['m' + i] = m; });
+
+        db.ref(path + '/messages').set(msgObj).catch(e => console.error('初回同期エラー(msg):', e));
+
+      }
+
+    }
+
+  }, err => {
+
+    console.error('Firebase msg読取エラー:', err);
+
+    updateConnBadge(false);
+
+  });
+
+
+
+  fbListenersAttached = true;
+
+}
+
+
+
+function updateConnBadge(online) {
+
+  const badge = document.getElementById('connBadge');
+
+  const text = document.getElementById('connText');
+
+  const fbSt = document.getElementById('fbStatusDisplay');
+
+  const fbTx = document.getElementById('fbStatusText');
+
+
+
+  if (online) {
+
+    badge.className = 'conn-badge online';
+
+    text.textContent = 'クラウド同期中';
+
+    fbSt.className = 'fb-status connected';
+
+    fbTx.textContent = 'Firebase接続済み（リアルタイム同期中）';
+
+  } else {
+
+    badge.className = 'conn-badge offline';
+
+    text.textContent = 'ローカル';
+
+    fbSt.className = 'fb-status disconnected';
+
+    fbTx.textContent = 'Firebase未接続（ローカル保存モード）';
+
+  }
+
+}
+
+
+
+// ============================================================
+
+//  DATA PERSISTENCE (Firebase + localStorage fallback)
+
+// ============================================================
+
+function loadData() {
+
+  try {
+
+    const cd = localStorage.getItem(storagePrefix() + '_cart');
+
+    if (cd) cartData = JSON.parse(cd);
+
+    const md = localStorage.getItem(storagePrefix() + '_msg');
+
+    if (md) messages = JSON.parse(md);
+
+  } catch(e) {}
+
+}
+
+
+
+function saveCartData() {
+
+  localStorage.setItem(storagePrefix() + '_cart', JSON.stringify(cartData));
+
+  if (useFirebase && db) {
+
+    db.ref(fbPath() + '/cart').set(cartData).catch(e => {
+
+      console.error('Firebase cart書込エラー:', e);
+
+    });
+
+  }
+
+}
+
+
+
+function saveMessages() {
+
+  localStorage.setItem(storagePrefix() + '_msg', JSON.stringify(messages));
+
+  if (useFirebase && db) {
+
+    // Convert array to object with id keys for Firebase
+
+    const msgObj = {};
+
+    messages.forEach(m => { msgObj['m' + m.id] = m; });
+
+    db.ref(fbPath() + '/messages').set(msgObj).catch(e => {
+
+      console.error('Firebase msg書込エラー:', e);
+
+    });
+
+  }
+
+}
+
+
+
+// ============================================================
+
+//  SETTINGS UI
+
+// ============================================================
+
+function applyConfig() {
+
+  const club = siteConfig.companyName
+
+    ? `${siteConfig.companyName}<br>${siteConfig.courseName}`
+
+    : (siteConfig.courseName || 'ゴルフ場未設定');
+
+  document.getElementById('headerClubName').innerHTML = club;
+
+  document.title = `カート乗入れ共有ボード｜${siteConfig.courseName || 'ゴルフ場'}`;
+
+  document.getElementById('weatherHeader').textContent =
+
+    `🌤️ 7日間天気予報（${siteConfig.areaName || '地域未設定'}）`;
+
+}
+
+
+
+function openSettings() {
+
+  document.getElementById('settCourseName').value = siteConfig.courseName || '';
+
+  document.getElementById('settCompanyName').value = siteConfig.companyName || '';
+
+  document.getElementById('settAreaName').value = siteConfig.areaName || '';
+
+  document.getElementById('settLat').value = siteConfig.lat || '';
+
+  document.getElementById('settLon').value = siteConfig.lon || '';
+
+  document.getElementById('settFirebaseUrl').value = siteConfig.firebaseUrl || '';
+
+  document.getElementById('settFirebaseKey').value = siteConfig.firebaseKey || '';
+
+  document.getElementById('settingsModal').classList.add('active');
+
+}
+
+function closeSettings() {
+
+  document.getElementById('settingsModal').classList.remove('active');
+
+}
+
+
+
+function saveSettings() {
+
+  const oldPrefix = storagePrefix();
+
+
+
+  siteConfig.courseName = document.getElementById('settCourseName').value.trim();
+
+  siteConfig.companyName = document.getElementById('settCompanyName').value.trim();
+
+  siteConfig.areaName = document.getElementById('settAreaName').value.trim();
+
+  siteConfig.lat = parseFloat(document.getElementById('settLat').value) || null;
+
+  siteConfig.lon = parseFloat(document.getElementById('settLon').value) || null;
+
+  siteConfig.firebaseUrl = document.getElementById('settFirebaseUrl').value.trim();
+
+  siteConfig.firebaseKey = document.getElementById('settFirebaseKey').value.trim();
+
+
+
+  saveConfigStorage();
+
+
+
+  // Re-init Firebase with new settings
+
+  initFirebase();
+
+
+
+  const newPrefix = storagePrefix();
+
+  if (oldPrefix !== newPrefix) {
+
+    cartData = {};
+
+    messages = [];
+
+    loadData();
+
+  }
+
+
+
+  applyConfig();
+
+  closeSettings();
+
+  fetchWeather();
+
+  renderCalendar();
+
+  updateTodayStatus();
+
+  renderMessages();
+
+}
+
+
+
+function renderPresets() {
+
+  const el = document.getElementById('presetList');
+
+  let html = '';
+
+  PRESETS.forEach((p, i) => {
+
+    html += `<button class="preset-btn" onclick="applyPreset(${i})">
+
+      <b>${p.name}</b>${p.area ? `<br><span style="color:#888;font-size:11px">${p.area} (${p.lat}, ${p.lon})</span>` : ''}
+
+    </button>`;
+
+  });
+
+  el.innerHTML = html;
+
+}
+
+
+
+function applyPreset(idx) {
+
+  const p = PRESETS[idx];
+
+  document.getElementById('settCourseName').value = p.name === 'その他（手入力）' ? '' : p.name;
+
+  document.getElementById('settCompanyName').value = p.company;
+
+  document.getElementById('settAreaName').value = p.area;
+
+  document.getElementById('settLat').value = p.lat || '';
+
+  document.getElementById('settLon').value = p.lon || '';
+
+}
+
+
+
+// ============================================================
+
+//  CALENDAR
+
+// ============================================================
+
+function dateKey(y, m, d) {
+
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+
+}
+
+function todayKey() {
+
+  const n = new Date();
+
+  return dateKey(n.getFullYear(), n.getMonth(), n.getDate());
+
+}
+
+function formatDate(key) {
+
+  const [y,m,d] = key.split('-');
+
+  const dow = ['日','月','火','水','木','金','土'][new Date(+y,+m-1,+d).getDay()];
+
+  return `${+m}月${+d}日（${dow}）`;
+
+}
+
+
+
+function renderCalendar() {
+
+  const grid = document.getElementById('calGrid');
+
+  document.getElementById('monthLabel').textContent = `${currentYear}年${currentMonth + 1}月`;
+
+
+
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  const tk = todayKey();
+
+
+
+  let html = '';
+
+  ['日','月','火','水','木','金','土'].forEach((d, i) => {
+
+    html += `<div class="cal-dow ${i===0?'sun':i===6?'sat':''}">${d}</div>`;
+
+  });
+
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-cell empty"></div>';
+
+
+
+  for (let d = 1; d <= daysInMonth; d++) {
+
+    const key = dateKey(currentYear, currentMonth, d);
+
+    const dow = new Date(currentYear, currentMonth, d).getDay();
+
+    const data = cartData[key] || {};
+
+    const dowCls = dow === 0 ? 'sun' : dow === 6 ? 'sat' : '';
+
+
+
+    let badge = '';
+
+    if (data.status === 'ok') badge = '<div class="status-badge badge-ok">乗入可</div>';
+
+    else if (data.status === 'ng') badge = '<div class="status-badge badge-ng">不 可</div>';
+
+
+
+    let wx = '';
+
+    if (weatherCache[key]) {
+
+      const w = weatherCache[key];
+
+      wx = `<div class="weather-mini"><span class="wx-icon">${w.icon}</span> ${w.tMax}°/${w.tMin}°</div>`;
+
+    }
+
+
+
+    html += `<div class="cal-cell ${key===tk?'today':''} ${key===selectedDate?'selected-cell':''}" onclick="selectDate('${key}')">
+
+      <div class="day-num ${dowCls}">${d}</div>${badge}${wx}</div>`;
+
+  }
+
+  grid.innerHTML = html;
+
+}
+
+
+
+function changeMonth(delta) {
+
+  currentMonth += delta;
+
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+
+  selectedDate = null;
+
+  document.getElementById('detailPanel').classList.remove('active');
+
+  renderCalendar();
+
+}
+
+
+
+function selectDate(key) {
+
+  selectedDate = key;
+
+  document.getElementById('detailPanel').classList.add('active');
+
+  document.getElementById('detailTitle').textContent = `📝 ${formatDate(key)} の設定`;
+
+  const data = cartData[key] || {};
+
+  document.querySelectorAll('.status-btn').forEach(btn => {
+
+    btn.className = 'status-btn';
+
+    if (data.status && btn.dataset.status === data.status) {
+
+      btn.classList.add(data.status === 'ok' ? 'sel-ok' : 'sel-ng');
+
+    }
+
+    // ステータス未設定時はクリアボタンも非選択
+
+  });
+
+  document.getElementById('detailNote').value = data.note || '';
+
+  renderCalendar();
+
+}
+
+
+
+function selectStatus(status) {
+
+  if (!selectedDate) return;
+
+  if (status === 'clear') {
+
+    // クリア：ステータスを削除
+
+    if (cartData[selectedDate]) {
+
+      delete cartData[selectedDate].status;
+
+      // noteも空なら日付ごと削除
+
+      if (!cartData[selectedDate].note) {
+
+        delete cartData[selectedDate];
+
+      }
+
+    }
+
+    document.querySelectorAll('.status-btn').forEach(btn => {
+
+      btn.className = 'status-btn';
+
+      if (btn.dataset.status === 'clear') btn.classList.add('sel-clear');
+
+    });
+
+  } else {
+
+    if (!cartData[selectedDate]) cartData[selectedDate] = {};
+
+    cartData[selectedDate].status = status;
+
+    document.querySelectorAll('.status-btn').forEach(btn => {
+
+      btn.className = 'status-btn';
+
+      if (btn.dataset.status === status) {
+
+        btn.classList.add(status === 'ok' ? 'sel-ok' : 'sel-ng');
+
+      }
+
+    });
+
+  }
+
+}
+
+
+
+function saveDetail() {
+
+  if (!selectedDate) return;
+
+  if (!cartData[selectedDate]) cartData[selectedDate] = {};
+
+  cartData[selectedDate].note = document.getElementById('detailNote').value;
+
+  saveCartData();
+
+  renderCalendar();
+
+  updateTodayStatus();
+
+  const btn = document.querySelector('.detail-panel .save-btn');
+
+  btn.textContent = '✅ 保存しました！';
+
+  setTimeout(() => btn.textContent = '💾 保存', 1500);
+
+}
+
+
+
+// ============================================================
+
+//  TODAY STATUS
+
+// ============================================================
+
+function updateTodayInfo() {
+
+  const now = new Date();
+
+  const dow = ['日','月','火','水','木','金','土'][now.getDay()];
+
+  document.getElementById('todayInfo').textContent =
+
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${dow}）`;
+
+}
+
+
+
+function updateTodayStatus() {
+
+  const data = cartData[todayKey()] || {};
+
+  const el = document.getElementById('todayStatusValue');
+
+  const noteEl = document.getElementById('todayStatusNote');
+
+  if (data.status === 'ok') {
+
+    el.textContent = '✅ 乗入れ可'; el.className = 'ts-value ok';
+
+  } else if (data.status === 'ng') {
+
+    el.textContent = '🚫 乗入れ不可'; el.className = 'ts-value ng';
+
+  } else {
+
+    el.textContent = '― 未設定 ―'; el.className = 'ts-value undecided';
+
+  }
+
+  noteEl.textContent = data.note || '';
+
+}
+
+
+
+// ============================================================
+
+//  WEATHER
+
+// ============================================================
+
+async function fetchWeather() {
+
+  const { lat, lon } = siteConfig;
+
+  if (!lat || !lon) {
+
+    document.getElementById('weatherList').innerHTML =
+
+      '<div class="loading">⚙️ 設定画面から天気予報の地域（緯度・経度）を<br>設定してください</div>';
+
+    return;
+
+  }
+
+  try {
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FTokyo&forecast_days=7`;
+
+    const res = await fetch(url);
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const json = await res.json();
+
+    const d = json.daily;
+
+    const tk = todayKey();
+
+    weatherCache = {};
+
+    let html = '';
+
+
+
+    for (let i = 0; i < d.time.length; i++) {
+
+      const date = d.time[i];
+
+      const icon = wxIcon(d.weather_code[i]);
+
+      const desc = wxDesc(d.weather_code[i]);
+
+      const tMax = Math.round(d.temperature_2m_max[i]);
+
+      const tMin = Math.round(d.temperature_2m_min[i]);
+
+      const rain = d.precipitation_sum[i];
+
+      const rainP = d.precipitation_probability_max[i];
+
+      const wind = Math.round(d.wind_speed_10m_max[i]);
+
+      const isToday = date === tk;
+
+      const [y,m,dd] = date.split('-');
+
+      const dow = ['日','月','火','水','木','金','土'][new Date(+y,+m-1,+dd).getDay()];
+
+
+
+      weatherCache[date] = { icon, tMax, tMin, rain, rainP };
+
+
+
+      html += `<div class="weather-item ${isToday?'today-wx':''}">
+
+        <div>${isToday?'<b>今日</b>':`${+m}/${+df(${dow})`}</div>
+
+        <div class="wx-icon">${icon}</div>
+
+        <div class="wx-detail">
+
+          <div class="wx-temp">${tMax}° / ${tMin}°  ${desc}</div>
+
+          <div class="wx-rain">💧 ${rain}mm（${rainP}%） 💨 ${wind}km/h</div>
+
+        </div>
+
+      </div>`;
+
+    }
+
+    document.getElementById('weatherList').innerHTML = html;
+
+
+
+    if (d.time.length > 0 && weatherCache[d.time[0]]) {
+
+      const t = weatherCache[d.time[0]];
+
+      document.getElementById('todayWeatherSummary').innerHTML =
+
+        `${t.icon} ${t.tMax}°/${t.tMin}° 降水${t.rain}mm`;
+
+    }
+
+    renderCalendar();
+
+  } catch(e) {
+
+    console.error('天気取得エラー:', e);
+
+    document.getElementById('weatherList').innerHTML =
+
+      `<div class="loading">⚠️ 天気データの取得に失敗しました<br><small>${e.message}</small></div>`;
+
+  }
+
+}
+
+
+
+function wxIcon(c) {
+
+  if (c===0) return '☀️'; if (c<=3) return '⛅'; if (c<=48) return '🌫️';
+
+  if (c<=57) return '🌦️'; if (c<=67) return '🌧️'; if (c<=77) return '🌨️';
+
+  if (c<=82) return '🌧️'; if (c<=86) return '🌨️'; if (c>=95) return '⛈️';
+
+  return '☁️';
+
+}
+
+function wxDesc(c) {
+
+  if (c===0) return '快晴'; if (c<=3) return '晴れ/曇り'; if (c<=48) return '霧';
+
+  if (c<=57) return '霧雨'; if (c<=65) return '雨'; if (c<=67) return '凍雨';
+
+  if (c<=77) return '雪'; if (c<=82) return 'にわか雨'; if (c<=86) return 'にわか雪';
+
+  if (c>=95) return '雷雨'; return '曜り';
+
+}
+
+
+
+// ============================================================
+
+//  MESSAGE BOARD
+
+// ============================================================
+
+function renderMessages() {
+
+  const el = document.getElementById('msgList');
+
+  if (!messages.length) {
+
+    el.innerHTML = '<div style="color:#999;text-align:center;padding:14px;font-size:13px;">連絡事項はまだありません</div>';
+
+    return;
+
+  }
+
+  const sorted = [...messages].sort((a,b) => b.id - a.id);
+
+  let html = '';
+
+  sorted.forEach(m => {
+
+    const t = new Date(m.id);
+
+    const ts = `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+
+    const dc = DEPT_MAP[m.dept] || 'course';
+
+    html += `<div class="msg-item dept-${dc}">
+
+      <div class="msg-meta">
+
+        <span><span class="msg-dept-tag tag-${dc}">${m.dept}</span> ${ts}</span>
+
+        <span class="msg-delete" onclick="deleteMessage(${m.id})" title="削除">✕</span>
+
+      </div>
+
+      <div class="msg-text">${escHtml(m.text)}</div>
+
+    </div>`;
+
+  });
+
+  el.innerHTML = html;
+
+}
+
+
+
+function postMessage() {
+
+  const dept = document.getElementById('msgDept').value;
+
+  const text = document.getElementById('msgText').value.trim();
+
+  if (!text) { alert('連絡事項を入力してください'); return; }
+
+  messages.push({ id: Date.now(), dept, text });
+
+  saveMessages();
+
+  renderMessages();
+
+  document.getElementById('msgText').value = '';
+
+}
+
+
+
+function deleteMessage(id) {
+
+  if (!confirm('この連絡を削除しますか？')) return;
+
+  messages = messages.filter(m => m.id !== id);
+
+  saveMessages();
+
+  renderMessages();
+
+}
+
+
+
+function escHtml(s) {
+
+  const d = document.createElement('div');
+
+  d.textContent = s;
+
+  return d.innerHTML;
+
+}
+
+
+
+// ============================================================
+
+//  START
+
+// ============================================================
+
+init();
+
+</script>
+
+</body>
+
+</html>
+
