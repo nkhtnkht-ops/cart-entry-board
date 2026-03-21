@@ -1,1 +1,1558 @@
-undefined
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>フェアウェイカート乗入れ共有ボード</title>
+<style>
+  :root {
+    --green-dark: #1a5c2e;
+    --green-mid: #2d8a4e;
+    --green-light: #e8f5e9;
+    --green-pale: #f1f8f3;
+    --ok-color: #2196F3;
+    --ng-color: #e53935;
+    --undecided-color: #9e9e9e;
+    --border: #c8e6c9;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --dept-course: #2e7d32;
+    --dept-office: #1565c0;
+    --dept-front: #e65100;
+    --dept-master: #6a1b9a;
+    --dept-restaurant: #c62828;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+    background: #f4f7f5;
+    color: #333;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+    color: #fff;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+  .header .subtitle { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+  .header .club-name { font-size: 13px; opacity: 0.95; text-align: right; font-weight: 600; }
+  .header .today-info { font-size: 10px; opacity: 0.75; margin-top: 2px; text-align: right; }
+  .header .settings-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 8px;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .header .settings-btn:hover { background: rgba(255,255,255,0.35); }
+
+  /* Connection indicator */
+  .conn-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-top: 3px;
+  }
+  .conn-badge.online { background: rgba(76,175,80,0.3); color: #c8e6c9; }
+  .conn-badge.offline { background: rgba(255,152,0,0.3); color: #ffe0b2; }
+  .conn-badge .conn-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .conn-badge.online .conn-dot { background: #4caf50; }
+  .conn-badge.offline .conn-dot { background: #ff9800; }
+
+  /* ===== Modal ===== */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    width: 560px;
+    max-width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-header {
+    background: var(--green-pale);
+    padding: 14px 18px;
+    border-bottom: 2px solid var(--border);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--green-dark);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .modal-header .close-btn {
+    background: none; border: none; font-size: 22px; cursor: pointer;
+    color: #888; padding: 0 4px; line-height: 1;
+  }
+  .modal-header .close-btn:hover { color: #333; }
+  .modal-body { padding: 18px; }
+  .modal-body label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: #555; margin-bottom: 4px; margin-top: 14px;
+  }
+  .modal-body label:first-child { margin-top: 0; }
+  .modal-body input, .modal-body select {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 9px 10px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .modal-body input:focus, .modal-body select:focus {
+    outline: none;
+    border-color: var(--green-mid);
+    box-shadow: 0 0 0 2px rgba(45,138,78,0.15);
+  }
+  .modal-body .hint { font-size: 11px; color: #999; margin-top: 3px; }
+  .modal-body .section-title {
+    font-size: 14px; font-weight: 700; color: var(--green-dark);
+    border-top: 1px solid #eee; padding-top: 16px; margin-top: 18px; margin-bottom: 2px;
+  }
+  .modal-body .coord-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .modal-body .coord-row label { margin-top: 14px; }
+  .modal-body .firebase-section {
+    background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px;
+    padding: 14px; margin-top: 6px;
+  }
+  .modal-body .firebase-section input {
+    font-size: 12px; font-family: 'Courier New', monospace;
+  }
+  .modal-body .fb-status {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-top: 8px;
+  }
+  .modal-body .fb-status.connected { background: #e8f5e9; color: #2e7d32; }
+  .modal-body .fb-status.disconnected { background: #fff3e0; color: #e65100; }
+  .modal-footer {
+    padding: 14px 18px;
+    border-top: 1px solid #eee;
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  .modal-footer button {
+    padding: 9px 20px; border-radius: 6px; font-size: 14px;
+    font-weight: 600; cursor: pointer; border: none; font-family: inherit;
+  }
+  .modal-footer .btn-cancel { background: #eee; color: #555; }
+  .modal-footer .btn-save { background: var(--green-mid); color: #fff; }
+  .modal-footer .btn-save:hover { background: var(--green-dark); }
+
+  /* ===== Course search ===== */
+  .course-search-wrap { position: relative; }
+  .course-search-wrap input {
+    width: 100%; padding: 9px 10px; font-size: 14px;
+    border: 1px solid #ccc; border-radius: 6px; font-family: inherit;
+  }
+  .course-search-wrap input:focus {
+    outline: none; border-color: var(--green-mid);
+    box-shadow: 0 0 0 2px rgba(45,138,78,0.15);
+  }
+  .course-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: #fff; border: 1px solid #ccc; border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 240px; overflow-y: auto;
+    z-index: 10; display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .course-dropdown.open { display: block; }
+  .course-dropdown .cd-item {
+    padding: 8px 12px; cursor: pointer; font-size: 13px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .course-dropdown .cd-item:hover { background: var(--green-light); }
+  .course-dropdown .cd-item b { color: var(--green-dark); }
+  .course-dropdown .cd-item .cd-addr { font-size: 11px; color: #888; margin-top: 1px; }
+  .course-dropdown .cd-item.cd-manual { color: #1565c0; font-weight: 600; border-top: 2px solid #eee; }
+  .course-selected-info {
+    margin-top: 6px; padding: 8px 12px; background: var(--green-light);
+    border-radius: 6px; font-size: 12px; display: none;
+  }
+  .course-selected-info.active { display: block; }
+  .course-selected-info .csi-name { font-weight: 700; color: var(--green-dark); }
+  .course-selected-info .csi-addr { color: #666; margin-top: 2px; }
+  .course-selected-info .csi-geo { color: #1565c0; margin-top: 2px; }
+  .manual-fields { display: none; margin-top: 10px; padding: 12px; background: #f9f9f9; border-radius: 8px; border: 1px dashed #ccc; }
+  .manual-fields.active { display: block; }
+  .geocode-status { font-size: 11px; margin-top: 4px; }
+
+  /* ===== Today status bar ===== */
+  .today-status-bar {
+    max-width: 1280px; margin: 14px auto 0; padding: 0 16px;
+  }
+  .today-status-card {
+    background: #fff; border-radius: 12px; box-shadow: var(--shadow);
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .today-status-card .ts-label { font-size: 13px; color: #666; }
+  .today-status-card .ts-value {
+    font-size: 20px; font-weight: 800;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .today-status-card .ts-value.ok { color: var(--ok-color); }
+  .today-status-card .ts-value.ng { color: var(--ng-color); }
+  .today-status-card .ts-value.undecided { color: var(--undecided-color); }
+  .today-status-card .ts-note { font-size: 13px; color: #555; flex: 1; min-width: 120px; }
+  .today-status-card .ts-weather { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+
+  /* ===== Main layout ===== */
+  .main {
+    max-width: 1280px; margin: 0 auto; padding: 16px;
+    display: grid; grid-template-columns: 1fr 340px; gap: 16px;
+  }
+
+  /* ===== Card ===== */
+  .card {
+    background: #fff; border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card-header {
+    background: var(--green-pale);
+    border-bottom: 2px solid var(--border);
+    padding: 12px 16px; font-weight: 700; font-size: 14px;
+    color: var(--green-dark);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-body { padding: 14px 16px; }
+
+  /* ===== Calendar ===== */
+  .cal-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .cal-nav button {
+    background: var(--green-mid); color: #fff; border: none;
+    border-radius: 6px; padding: 6px 14px; cursor: pointer;
+    font-size: 13px; transition: background 0.2s;
+  }
+  .cal-nav button:hover { background: var(--green-dark); }
+  .cal-nav .month-label { font-size: 17px; font-weight: 700; color: var(--green-dark); }
+
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+  }
+  .cal-dow {
+    text-align: center; font-size: 11px; font-weight: 700;
+    color: #666; padding: 3px 0;
+  }
+  .cal-dow.sun { color: #e53935; }
+  .cal-dow.sat { color: #1565c0; }
+
+  .cal-cell {
+    min-height: 68px; border-radius: 7px; padding: 3px 5px;
+    font-size: 12px; cursor: pointer; border: 2px solid transparent;
+    transition: all 0.15s; background: #fafafa;
+  }
+  .cal-cell:hover { border-color: var(--green-mid); }
+  .cal-cell.today { border-color: var(--green-mid); background: var(--green-light); }
+  .cal-cell.empty { background: transparent; cursor: default; border-color: transparent; }
+  .cal-cell .day-num { font-weight: 700; font-size: 13px; }
+  .cal-cell .day-num.sun { color: #e53935; }
+  .cal-cell .day-num.sat { color: #1565c0; }
+  .cal-cell .status-badge {
+    display: inline-block; font-size: 9px; font-weight: 700;
+    padding: 1px 6px; border-radius: 8px; margin-top: 2px; color: #fff;
+  }
+  .badge-ok { background: var(--ok-color); }
+  .badge-ng { background: var(--ng-color); }
+  .cal-cell .weather-mini {
+    font-size: 9px; color: #666; margin-top: 1px; line-height: 1.2;
+  }
+  .cal-cell .weather-mini .wx-icon { font-size: 12px; }
+  .selected-cell { border-color: var(--green-dark) !important; background: #dcedc8 !important; }
+
+  /* ===== Detail panel ===== */
+  .detail-panel {
+    margin-top: 12px; padding: 14px; background: var(--green-pale);
+    border-radius: 10px; display: none;
+  }
+  .detail-panel.active { display: block; }
+  .detail-panel h3 { font-size: 14px; margin-bottom: 10px; color: var(--green-dark); }
+  .detail-panel .status-selector { display: flex; gap: 8px; margin-bottom: 10px; }
+  .status-btn {
+    flex: 1; padding: 10px 8px; border: 2px solid #ccc; border-radius: 8px;
+    background: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+    text-align: center; transition: all 0.2s;
+  }
+  .status-btn:hover { transform: translateY(-1px); }
+  .status-btn.sel-ok { border-color: var(--ok-color); background: #e3f2fd; color: var(--ok-color); }
+  .status-btn.sel-ng { border-color: var(--ng-color); background: #ffebee; color: var(--ng-color); }
+  .status-btn.sel-clear { border-color: var(--undecided-color); background: #f5f5f5; color: var(--undecided-color); }
+  .detail-panel textarea {
+    width: 100%; border: 1px solid #ccc; border-radius: 6px;
+    padding: 8px; font-size: 13px; resize: vertical;
+    min-height: 48px; font-family: inherit;
+  }
+  .detail-panel .save-btn {
+    margin-top: 8px; background: var(--green-mid); color: #fff;
+    border: none; border-radius: 6px; padding: 8px 20px;
+    cursor: pointer; font-size: 14px; font-weight: 600;
+  }
+  .detail-panel .save-btn:hover { background: var(--green-dark); }
+
+  /* ===== Weather ===== */
+  .weather-list { display: flex; flex-direction: column; gap: 6px; }
+  .weather-item {
+    display: grid; grid-template-columns: 64px 36px 1fr;
+    align-items: center; gap: 6px; padding: 7px 8px;
+    background: #fafafa; border-radius: 7px; font-size: 12px;
+  }
+  .weather-item.today-wx { background: var(--green-light); font-weight: 600; }
+  .weather-item .wx-icon { font-size: 20px; text-align: center; }
+  .weather-item .wx-detail { line-height: 1.4; }
+  .weather-item .wx-temp { font-weight: 600; }
+  .weather-item .wx-rain { color: #1565c0; font-size: 11px; }
+
+  /* ===== Message board ===== */
+  .msg-list {
+    max-height: 380px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;
+  }
+  .msg-item {
+    background: #fafafa; border-radius: 8px; padding: 10px 12px;
+    font-size: 13px; border-left: 4px solid var(--green-mid);
+  }
+  .msg-item.dept-course     { border-left-color: var(--dept-course);     background: #e8f5e9; }
+  .msg-item.dept-office     { border-left-color: var(--dept-office);     background: #e3f2fd; }
+  .msg-item.dept-front      { border-left-color: var(--dept-front);      background: #fff3e0; }
+  .msg-item.dept-master     { border-left-color: var(--dept-master);     background: #f3e5f5; }
+  .msg-item.dept-restaurant { border-left-color: var(--dept-restaurant); background: #ffebee; }
+  .msg-item .msg-meta {
+    font-size: 11px; color: #666; margin-bottom: 4px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .msg-item .msg-dept-tag {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 1px 7px; border-radius: 10px; color: #fff;
+  }
+  .msg-dept-tag.tag-course     { background: var(--dept-course); }
+  .msg-dept-tag.tag-office     { background: var(--dept-office); }
+  .msg-dept-tag.tag-front      { background: var(--dept-front); }
+  .msg-dept-tag.tag-master     { background: var(--dept-master); }
+  .msg-dept-tag.tag-restaurant { background: var(--dept-restaurant); }
+  .msg-item .msg-meta .msg-delete {
+    color: #999; cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 4px;
+  }
+  .msg-item .msg-meta .msg-delete:hover { background: #ffebee; color: #e53935; }
+  .msg-item .msg-text { line-height: 1.5; word-break: break-word; margin-top: 4px; }
+
+  .msg-form { display: flex; flex-direction: column; gap: 8px; }
+  .msg-form select, .msg-form textarea {
+    border: 1px solid #ccc; border-radius: 6px; padding: 8px;
+    font-size: 13px; font-family: inherit;
+  }
+  .msg-form textarea { min-height: 56px; resize: vertical; }
+  .msg-form .post-btn {
+    background: var(--green-mid); color: #fff; border: none;
+    border-radius: 6px; padding: 10px; cursor: pointer;
+    font-weight: 600; font-size: 14px;
+  }
+  .msg-form .post-btn:hover { background: var(--green-dark); }
+
+  .dept-legend {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;
+  }
+  .dept-legend-item { display: flex; align-items: center; gap: 3px; font-size: 10px; color: #555; }
+  .dept-legend-item .dept-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+  .legend {
+    display: flex; gap: 12px; font-size: 11px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .legend .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+
+  .loading { text-align: center; padding: 16px; color: #999; font-size: 13px; }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 960px) {
+    .main { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+    .header h1 { font-size: 16px; }
+  }
+  @media (max-width: 600px) {
+    .header { padding: 10px 14px; }
+    .header h1 { font-size: 14px; }
+    .header .subtitle { font-size: 10px; }
+    .header .club-name { font-size: 11px; }
+    .today-status-card { padding: 12px 14px; gap: 10px; }
+    .today-status-card .ts-value { font-size: 18px; }
+    .cal-cell { min-height: 56px; padding: 2px 3px; }
+    .cal-cell .day-num { font-size: 12px; }
+    .cal-cell .status-badge { font-size: 8px; padding: 1px 4px; }
+    .cal-cell .weather-mini { font-size: 8px; }
+    .cal-cell .weather-mini .wx-icon { font-size: 10px; }
+    .modal-body .coord-row { grid-template-columns: 1fr; }
+  }
+
+  @media print {
+    .header { background: #333 !important; -webkit-print-color-adjust: exact; }
+    .card { break-inside: avoid; }
+    .modal-overlay { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Settings Modal ===== -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span>⚙️ 事業所・接続設定</span>
+      <button class="close-btn" onclick="closeSettings()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Course selection -->
+      <label>事業所を選択（アコーディア・ゴルフ全事業所）</label>
+      <div class="course-search-wrap">
+        <input type="text" id="courseSearchInput" placeholder="🔍 事業所名で検索..." autocomplete="off">
+        <div class="course-dropdown" id="courseDropdown"></div>
+      </div>
+      <div class="hint">事業所名の一部を入力すると候補が表示されます</div>
+
+      <div class="course-selected-info" id="courseSelectedInfo">
+        <div class="csi-name" id="csiName"></div>
+        <div class="csi-addr" id="csiAddr"></div>
+        <div class="csi-geo" id="csiGeo">📍 位置情報を取得中...</div>
+      </div>
+
+      <!-- Manual input (hidden by default) -->
+      <div class="manual-fields" id="manualFields">
+        <label style="margin-top:0;">ゴルフ場名称</label>
+        <input type="text" id="settCourseName" placeholder="例：○○カントリークラブ">
+        <label>運営会社名</label>
+        <input type="text" id="settCompanyName" placeholder="例：アコーディア・ゴルフ">
+        <div class="section-title" style="margin-top:14px;">🌤️ 天気予報の取得地域</div>
+        <label>地域名</label>
+        <input type="text" id="settAreaName" placeholder="例：泉佐野">
+        <div class="coord-row">
+          <div>
+            <label>緯度（Latitude）</label>
+            <input type="number" step="0.01" id="settLat" placeholder="例：34.40">
+          </div>
+          <div>
+            <label>経度（Longitude）</label>
+            <input type="number" step="0.01" id="settLon" placeholder="例：135.33">
+          </div>
+        </div>
+        <div class="hint">Google Mapでコースの位置を右クリック → 座標をコピーできます</div>
+      </div>
+
+      <!-- Firebase -->
+      <div class="section-title">🔗 Firebase接続（複数端末リアルタイム共有）</div>
+      <div class="firebase-section">
+        <label style="margin-top:0;">Firebase Realtime Database URL</label>
+        <input type="text" id="settFirebaseUrl" placeholder="例：https://your-project-id-default-rtdb.firebaseio.com">
+        <div class="hint">Firebase Consoleで作成したRealtime DatabaseのURLを貼り付けてください</div>
+
+        <label>API Key</label>
+        <input type="text" id="settFirebaseKey" placeholder="例：AIzaSy...">
+        <div class="hint">Firebaseプロジェクト設定 → ウェブアプリ → apiKey の値</div>
+
+        <div class="fb-status disconnected" id="fbStatusDisplay">
+          <span>⚠️</span> <span id="fbStatusText">Firebase未接続（ローカル保存モード）</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeSettings()">キャンセル</button>
+      <button class="btn-save" onclick="saveSettings()">💾 保存して適用</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Header ===== -->
+<div class="header">
+  <div>
+    <h1>🏌️ フェアウェイカート乗入れ共有ボード</h1>
+    <div class="subtitle">コース管理課 ↔ 事務所 連絡システム</div>
+  </div>
+  <div style="display:flex; align-items:center; gap:6px;">
+    <div>
+      <div class="club-name" id="headerClubName">ゴルフ場未設定</div>
+      <div class="today-info" id="todayInfo"></div>
+      <div class="conn-badge offline" id="connBadge">
+        <span class="conn-dot"></span><span id="connText">ローカル</span>
+      </div>
+    </div>
+    <button class="settings-btn" onclick="openSettings()">⚙️ 設定</button>
+  </div>
+</div>
+
+<!-- Today's status -->
+<div class="today-status-bar">
+  <div class="today-status-card">
+    <div>
+      <div class="ts-label">本日のカート乗入れ</div>
+      <div class="ts-value undecided" id="todayStatusValue">― 未設定 ―</div>
+    </div>
+    <div class="ts-note" id="todayStatusNote"></div>
+    <div class="ts-weather" id="todayWeatherSummary"></div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Left: Calendar -->
+  <div>
+    <div class="card">
+      <div class="card-header">📅 カレンダー（カート乗入れ状況）</div>
+      <div class="card-body">
+        <div class="cal-nav">
+          <button onclick="changeMonth(-1)">◀ 前月</button>
+          <span class="month-label" id="monthLabel"></span>
+          <button onclick="changeMonth(1)">次月 ▶</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="legend">
+          <span><span class="dot" style="background:var(--ok-color)"></span> 乗入れ可</span>
+          <span><span class="dot" style="background:var(--ng-color)"></span> 乗入れ不可</span>
+          <span><span class="dot" style="background:var(--undecided-color)"></span> 未設定</span>
+        </div>
+        <div class="detail-panel" id="detailPanel">
+          <h3 id="detailTitle"></h3>
+          <div class="status-selector">
+            <div class="status-btn" data-status="ok" onclick="selectStatus('ok')">✅ 乗入れ可</div>
+            <div class="status-btn" data-status="ng" onclick="selectStatus('ng')">🚫 乗入れ不可</div>
+            <div class="status-btn" data-status="clear" onclick="selectStatus('clear')">✖ クリア</div>
+          </div>
+          <label style="font-size:13px; color:#555; margin-bottom:4px; display:block;">備考（理由など）</label>
+          <textarea id="detailNote" placeholder="例：前日の大雨によりフェアウェイ軟弱のため"></textarea>
+          <button class="save-btn" onclick="saveDetail()">💾 保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Weather + Messages -->
+  <div style="display:flex; flex-direction:column; gap:16px;">
+    <div class="card">
+      <div class="card-header" id="weatherHeader">🌤️ 7日間天気予報</div>
+      <div class="card-body">
+        <div class="weather-list" id="weatherList">
+          <div class="loading">天気データを取得中...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">💬 部門間連絡ボード</div>
+      <div class="card-body">
+        <div class="dept-legend">
+          <div class="dept-legend-item"><span class="dept-dot" style="background:var(--dept-course)"></span>コース管理課</div>
+          <div class="dept-legend-item"><span class="dept-dot" style="background:var(--dept-office)"></span>事務所</div>
+          <div class="dept-legend-item"><span class="dept-dot" style="background:var(--dept-front)"></span>フロント</div>
+          <div class="dept-legend-item"><span class="dept-dot" style="background:var(--dept-master)"></span>マスター室</div>
+          <div class="dept-legend-item"><span class="dept-dot" style="background:var(--dept-restaurant)"></span>レストラン</div>
+        </div>
+        <div class="msg-list" id="msgList"></div>
+        <div class="msg-form">
+          <select id="msgDept">
+            <option value="コース管理課">コース管理課</option>
+            <option value="事務所">事務所</option>
+            <option value="フロント">フロント</option>
+            <option value="マスター室">マスター室</option>
+            <option value="レストラン">レストラン</option>
+          </select>
+          <textarea id="msgText" placeholder="連絡事項を入力..."></textarea>
+          <button class="post-btn" onclick="postMessage()">📤 投稿する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Firebase SDK (compat v9) ===== -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// ============================================================
+//  AG COURSES DATA (182 courses)
+// ============================================================
+const AG_COURSES = [
+  {n:'樽前カントリークラブ',a:'北海道苫小牧市錦岡491'},
+  {n:'大沼レイクゴルフクラブ',a:'北海道茅部郡森町字赤井川252'},
+  {n:'宮城野ゴルフクラブ',a:'宮城県亘理郡山元町坂元字渋沢43'},
+  {n:'おおさとゴルフ倶楽部',a:'宮城県黒川郡大郷町東成田字北沢山18'},
+  {n:'花の杜ゴルフクラブ',a:'宮城県黒川郡大衡村大瓜字中山45-92'},
+  {n:'山形南カントリークラブ',a:'山形県東置賜郡川西町上小松江の口澤5163'},
+  {n:'大新潟カントリークラブ三条コース',a:'新潟県三条市大字長沢1385'},
+  {n:'大新潟カントリークラブ出雲崎コース',a:'新潟県三島郡出雲崎町大字乙茂588甲'},
+  {n:'宇津峰カントリークラブ',a:'福島県須賀川市塩田宮田1'},
+  {n:'小名浜オーシャンホテル＆ゴルフクラブ',a:'福島県いわき市泉町下川字大畑17'},
+  {n:'小名浜カントリー倶楽部',a:'福島県いわき市小名浜上神白字東大沢1-44'},
+  {n:'広陵カントリークラブ',a:'栃木県鹿沼市西鹿沼町1140-2'},
+  {n:'ディアレイク・カントリー倶楽部',a:'栃木県鹿沼市玉田町1200'},
+  {n:'岩舟ゴルフクラブ',a:'栃木県栃木市岩舟町小野寺3980'},
+  {n:'大平台カントリークラブ',a:'栃木県栃木市皆川城内町2498'},
+  {n:'皆川城カントリークラブ',a:'栃木県栃木市皆川城内町2611-2'},
+  {n:'ひととのやカントリー倶楽部',a:'栃木県小山市神鳥谷2243'},
+  {n:'アゼリアヒルズカントリークラブ',a:'栃木県栃木市梅沢町1'},
+  {n:'喜連川カントリー倶楽部',a:'栃木県さくら市穂積533-1'},
+  {n:'関東国際カントリークラブ',a:'栃木県芳賀郡茂木町大字下菅又735'},
+  {n:'甘楽カントリークラブ',a:'群馬県甘楽郡甘楽町天引1955'},
+  {n:'関越ハイランドゴルフクラブ',a:'群馬県高崎市吉井町長根2718'},
+  {n:'妙義カントリークラブ',a:'群馬県富岡市妙義町菅原2678'},
+  {n:'妙義グリーンホテル＆テラス',a:'群馬県富岡市妙義町菅原2678'},
+  {n:'ノーザンカントリークラブ赤城ゴルフ場',a:'群馬県渋川市赤城町北赤城山15-64'},
+  {n:'ノーザンカントリークラブ上毛ゴルフ場',a:'群馬県吾妻郡高山村大字中山6860-1'},
+  {n:'藤岡ゴルフクラブ',a:'群馬県藤岡市白石2925'},
+  {n:'ツインレイクスカントリー倶楽部',a:'群馬県藤岡市高山169ｰ1'},
+  {n:'緑野カントリークラブ',a:'群馬県藤岡市下日野乙239'},
+  {n:'こだま神川カントリークラブ',a:'埼玉県児玉郡神川町渡瀬1492-1'},
+  {n:'秩父国際カントリークラブ',a:'埼玉県秩父郡皆野町三沢4633-1'},
+  {n:'彩の森カントリークラブ',a:'埼玉県秩父市品沢坊ケ入1641'},
+  {n:'玉川カントリークラブ',a:'埼玉県比企郡ときがわ町大字玉川3966-3'},
+  {n:'アドニス小川カントリー倶楽部',a:'埼玉県比企郡小川町青山2100'},
+  {n:'ノーザンカントリークラブ錦ヶ原ゴルフ場',a:'埼玉県さいたま市西区塚本町2-22-1'},
+  {n:'寄居カントリークラブ',a:'埼玉県大里郡寄居町大字牟礼1286'},
+  {n:'さいたまゴルフクラブ',a:'埼玉県入間郡毛呂山町大字葛貫1200'},
+  {n:'おおむらさきゴルフ倶楽部',a:'埼玉県比企郡滑川町中尾1185'},
+  {n:'石岡ウエストカントリークラブ',a:'茨城県笠間市上郷3355'},
+  {n:'水戸･ゴルフ･クラブ',a:'茨城県水戸市加倉井町1760'},
+  {n:'セントラルゴルフクラブ',a:'茨城県行方市麻生2196'},
+  {n:'セントラルゴルフクラブＮＥＷコース',a:'茨城県行方市小牧1006-9'},
+  {n:'セントラルゴルフクラブ麻生コース',a:'茨城県行方市島並933'},
+  {n:'土浦カントリー倶楽部',a:'茨城県稲敷市堀之内419'},
+  {n:'霞台カントリークラブ',a:'茨城県稲敷市四箇3405'},
+  {n:'おかだいらゴルフリンクス',a:'茨城県稲敷郡美浦村大山後田1059'},
+  {n:'取手桜が丘ゴルフクラブ',a:'茨城県取手市渋沼1393'},
+  {n:'ワイルドダックカントリークラブ',a:'茨城県神栖市日川2519'},
+  {n:'スカイウェイカントリークラブ',a:'千葉県成田市幡谷941-1'},
+  {n:'成田東カントリークラブ',a:'千葉県香取市山倉1367'},
+  {n:'千葉桜の里ゴルフクラブ',a:'千葉県香取市田部1434'},
+  {n:'佐原カントリークラブ',a:'千葉県香取市多田89'},
+  {n:'グレンオークスカントリークラブ',a:'千葉県香取市沢442'},
+  {n:'オーク・ヒルズカントリークラブ',a:'千葉県香取市苅毛893'},
+  {n:'東千葉カントリークラブ',a:'千葉県東金市滝503'},
+  {n:'成田ゴルフ倶楽部',a:'千葉県成田市大室127'},
+  {n:'空港ゴルフコース成田',a:'千葉県香取市小川1371-1'},
+  {n:'習志野カントリークラブ',a:'千葉県印西市大森7'},
+  {n:'東京湾カントリークラブ',a:'千葉県袖ヶ浦市蔵波1147'},
+  {n:'アクアラインゴルフクラブ',a:'千葉県木更津市真里谷4345-3'},
+  {n:'ニュー南総ゴルフ倶楽部',a:'千葉県市原市上高根1616-1'},
+  {n:'四街道ゴルフ倶楽部',a:'千葉県四街道市小名木268'},
+  {n:'富士市原ゴルフクラブ',a:'千葉県市原市古敷谷権現代1685'},
+  {n:'花生カントリークラブ',a:'千葉県夷隅郡大多喜町平沢字鍵坂1523-18'},
+  {n:'鴨川カントリークラブ',a:'千葉県鴨川市和泉2607'},
+  {n:'房州カントリークラブ',a:'千葉県館山市藤原1128'},
+  {n:'かずさカントリークラブ',a:'千葉県市原市古敷谷975'},
+  {n:'ラ・ヴィスタゴルフリゾート',a:'千葉県長生郡長南町佐坪373'},
+  {n:'東京相武カントリークラブ',a:'東京都八王子市大船町620'},
+  {n:'大厚木カントリークラブ本コース',a:'神奈川県厚木市上荻野4088'},
+  {n:'大厚木カントリークラブ桜コース',a:'神奈川県厚木市上荻野4088'},
+  {n:'小田原ゴルフ倶楽部松田コース',a:'神奈川県足柄上郡松田町寄321'},
+  {n:'大月ガーデンゴルフクラブ',a:'山梨県都留市朝日馬場1407'},
+  {n:'三島カントリークラブ',a:'静岡県三島市徳倉1195'},
+  {n:'十里木カントリークラブ',a:'静岡県富士市桑崎1016'},
+  {n:'愛鷹シックスハンドレッドクラブ',a:'静岡県沼津市宮本字元野512'},
+  {n:'伊豆国際カントリークラブ',a:'静岡県伊豆市堀切1004ｰ5'},
+  {n:'富士の杜ゴルフクラブ',a:'静岡県駿東郡小山町須走493'},
+  {n:'西富士ゴルフ倶楽部',a:'静岡県富士宮市内野1291-1'},
+  {n:'キャッスルヒルカントリークラブ',a:'愛知県豊川市足山田町奥滝場20-2'},
+  {n:'つくでゴルフクラブ',a:'愛知県新城市作手高里字円所1'},
+  {n:'岡崎カントリー倶楽部',a:'愛知県岡崎市池金町字下北山2-39'},
+  {n:'稲武カントリークラブ',a:'愛知県豊田市夏焼町クダリヤマ495-9'},
+  {n:'掛川カントリークラブ',a:'静岡県掛川市小貫1357'},
+  {n:'新陽カントリー倶楽部',a:'岐阜県土岐市鶴里町細野1378-3'},
+  {n:'フォレストみずなみカントリークラブ',a:'岐阜県瑞浪市釜戸町上桑原4605'},
+  {n:'サンクラシックゴルフクラブ',a:'岐阜県可児郡御嵩町比衣字北大洞1097-1-1'},
+  {n:'美濃関カントリークラブ',a:'岐阜県関市塔之洞字中洞3984'},
+  {n:'小萱チェリークリークカントリークラブ',a:'岐阜県可児市久々利奥小栗431-5'},
+  {n:'エクセレントゴルフクラブみたけ花トピアコース',a:'岐阜県可児郡御嵩町古屋敷字東洞155-1'},
+  {n:'藤原ゴルフクラブ',a:'三重県いなべ市藤原町上相場640-7'},
+  {n:'四日市の里ゴルフクラブ',a:'三重県四日市市内山町8279'},
+  {n:'鈴鹿の森ゴルフクラブ',a:'三重県鈴鹿市西庄内町1882'},
+  {n:'双鈴ゴルフクラブ関コース',a:'三重県亀山市加太梶ヶ坂2985-2'},
+  {n:'双鈴ゴルフクラブ土山コース',a:'滋賀県甲賀市土山町南土山1118-7'},
+  {n:'ルート２５ゴルフクラブ',a:'三重県伊賀市愛田2280'},
+  {n:'名松・ゴルフクラブ',a:'三重県津市一志町波瀬5992-2'},
+  {n:'フォレスト芸濃ゴルフクラブ',a:'三重県津市芸濃町林2245'},
+  {n:'霞ゴルフクラブ',a:'三重県津市芸濃町椋本4766'},
+  {n:'エクセレントゴルフクラブ伊勢大鷲コース',a:'三重県津市稲葉町1497'},
+  {n:'エクセレントゴルフクラブ一志温泉コース',a:'三重県津市一志町波瀬長谷581'},
+  {n:'エクセレントゴルフクラブ伊勢二見コース',a:'三重県伊勢市朝熊町字鴨谷4383-82'},
+  {n:'金沢セントラルカントリー倶楽部',a:'石川県金沢市東長江町於１'},
+  {n:'石川ゴルフ倶楽部',a:'石川県河北郡津幡町大坪井1番地'},
+  {n:'フクイカントリークラブ',a:'福井県坂井市丸岡町野中山王60'},
+  {n:'大津カントリークラブ東コース',a:'滋賀県大津市大石淀町800'},
+  {n:'大津カントリークラブ西コース',a:'滋賀県大津市大石小田原町1000'},
+  {n:'比良ゴルフ倶楽部',a:'滋賀県大津市小野1611'},
+  {n:'グリーンハイランドカントリー倶楽部',a:'三重県名張市薦生大峯1116-3'},
+  {n:'万壽ゴルフクラブ',a:'奈良県山辺郡山添村大字切幡1424'},
+  {n:'奈良万葉カンツリー倶楽部',a:'奈良県奈良市八島町470'},
+  {n:'奈良名阪ゴルフクラブ',a:'奈良県奈良市荻町709'},
+  {n:'奈良若草カントリー倶楽部',a:'奈良県奈良市下深川町850-6'},
+  {n:'加茂カントリークラブ',a:'京都府木津川市加茂町高去花原7'},
+  {n:'レイクフォレストリゾート',a:'京都府相楽郡南山城村大字南大河原小字新林'},
+  {n:'奈良の杜ゴルフクラブ',a:'奈良県奈良市忍辱山町1735'},
+  {n:'大和高原カントリークラブ',a:'奈良県奈良市柳生町1138番地1'},
+  {n:'朝宮ゴルフコース',a:'滋賀県甲賀市信楽町上朝宮1-1'},
+  {n:'協和ゴルフクラブ',a:'京都府相楽郡和束町湯船中の谷199'},
+  {n:'きさいちカントリークラブ',a:'大阪府交野市私市3008-1'},
+  {n:'堺カントリークラブ',a:'大阪府堺市南区豊田2989-16'},
+  {n:'泉佐野カントリークラブ',a:'大阪府泉佐野市日根野5320'},
+  {n:'みさきカントリークラブ',a:'大阪府泉南郡岬町深日3247'},
+  {n:'サンリゾートカントリークラブ',a:'和歌山県海草郡紀美野町安井297'},
+  {n:'グランベール京都ゴルフ倶楽部',a:'京都府船井郡京丹波町実勢上ノ谷4-1'},
+  {n:'亀岡ゴルフクラブ',a:'京都府亀岡市西別院町神地長尾22'},
+  {n:'猪名川国際カントリークラブ',a:'兵庫県川辺郡猪名川町北田原字釜ヶ谷1'},
+  {n:'猪名川グリーンカントリークラブ',a:'兵庫県川辺郡猪名川町下阿古谷賀屋4'},
+  {n:'山の原ゴルフクラブ',a:'兵庫県川西市山の原字下恋里12'},
+  {n:'愛宕原ゴルフ倶楽部',a:'兵庫県宝塚市切畑字長尾山5-3'},
+  {n:'神戸パインウッズゴルフクラブ',a:'兵庫県神戸市北区長尾町上津4618'},
+  {n:'三木セブンハンドレッド倶楽部',a:'兵庫県三木市志染町大谷217'},
+  {n:'ロータリーゴルフ倶楽部',a:'兵庫県神戸市北区淡河町南僧尾1679-1'},
+  {n:'六甲カントリー倶楽部',a:'兵庫県西宮市山口町金仙寺字釜ヶ尾1655-1'},
+  {n:'やしろ東条ゴルフクラブ',a:'兵庫県加東市栄枝字ヨリフジ405'},
+  {n:'東条パインバレーゴルフクラブ',a:'兵庫県加東市新定275-144'},
+  {n:'播磨カントリークラブ',a:'兵庫県小野市樫山町1889-31'},
+  {n:'加西カントリークラブ',a:'兵庫県加西市山下町字シャク志2390-1'},
+  {n:'白鷺ゴルフクラブ',a:'兵庫県姫路市山田町南山田120'},
+  {n:'播州東洋ゴルフ倶楽部',a:'兵庫県加西市西横田町字長坂453-2'},
+  {n:'富士小野ゴルフクラブ',a:'兵庫県小野市長尾町字真谷835-15'},
+  {n:'ローズウッドゴルフクラブ',a:'兵庫県小野市山田町1441-52'},
+  {n:'竹原カントリークラブ',a:'広島県竹原市小梨町字堂平2022'},
+  {n:'本郷カントリー倶楽部',a:'広島県三原市本郷町南方字松屋根1251-1'},
+  {n:'広島安佐ゴルフクラブ',a:'広島県広島市安佐北区安佐町筒瀬1471-21'},
+  {n:'白竜湖カントリークラブ',a:'広島県三原市大和町和木3262'},
+  {n:'千代田ゴルフ倶楽部',a:'広島県山県郡北広島町寺原字北迫2851'},
+  {n:'いづも大社カントリークラブ',a:'島根県出雲市湖陵町大池1944'},
+  {n:'和木ゴルフ倶楽部',a:'山口県玖珂郡和木町瀬田蜂ヶ峯424-3'},
+  {n:'山陽国際ゴルフクラブ',a:'山口県山陽小野田市大字福田1-1'},
+  {n:'セントラル福岡ゴルフ倶楽部',a:'福岡県筑紫野市大字山家上西山'},
+  {n:'二丈カントリークラブ',a:'福岡県糸島市二丈吉井3362'},
+  {n:'福岡フェザントカントリークラブ',a:'福岡県田川郡川崎町大字安真木1086-7'},
+  {n:'かほゴルフクラブ',a:'福岡県飯塚市筒野534-1'},
+  {n:'花祭ゴルフ倶楽部',a:'佐賀県杵島郡江北町大字山口字花祭7020'},
+  {n:'佐世保国際カントリー倶楽部',a:'長崎県佐世保市口の尾町1589'},
+  {n:'ハウステンボスカントリークラブ',a:'長崎県西海市西彼町八木原郷2879-2'},
+  {n:'長崎パークカントリークラブ',a:'長崎県西海市西彼町上岳郷1255-1'},
+  {n:'菊池カントリークラブ',a:'熊本県菊池市原4993-1'},
+  {n:'阿蘇大津ゴルフクラブ',a:'熊本県菊池郡大津町大字瀬田711'},
+  {n:'別府の森ゴルフ倶楽部',a:'大分県別府市大字枝郷'},
+  {n:'大分サニーヒルゴルフ倶楽部',a:'大分県由布市挾間町向原864-1'},
+  {n:'天瀬温泉カントリークラブ',a:'大分県日田市天瀬町桜竹841-21'},
+  {n:'青島ゴルフ倶楽部',a:'宮崎県宮崎市大字折生迫字大谷4180'},
+  {n:'レインボースポーツランドゴルフクラブ',a:'宮崎県都城市高城町石山4474'},
+  {n:'湯の浦カントリー倶楽部',a:'鹿児島県日置市吹上町湯之浦393'},
+  {n:'ザ・サザンリンクスゴルフクラブ',a:'沖縄県島尻郡八重瀬町字玻名城697'},
+  {n:'パームヒルズゴルフリゾートクラブ',a:'沖縄県糸満市字新垣762'},
+  {n:'沖縄カントリークラブ',a:'沖縄県中頭郡西原町桃原109'},
+  {n:'オーシャンキャッスルカントリークラブ',a:'沖縄県中頭郡中城村字登又60'},
+  {n:'出島ゴルフクラブ',a:'茨城県かすみがうら市下軽部881'},
+  {n:'かすみがうらゴルフクラブ',a:'茨城県かすみがうら市田伏5136'},
+  {n:'ローレルバレイカントリークラブ',a:'福島県須賀川市守屋字南高松22-35'},
+  {n:'エヴァンタイユゴルフクラブ',a:'栃木県栃木市小野口町1237-1'},
+  {n:'勝田ゴルフ倶楽部',a:'茨城県ひたちなか市大字長砂1506'},
+  {n:'総武カントリークラブ　総武コース',a:'千葉県印西市草深302'},
+  {n:'総武カントリークラブ　印旛コース',a:'千葉県印西市造谷495'},
+  {n:'総武カントリークラブ　北コース',a:'千葉県印西市造谷495-2'},
+  {n:'一志ゴルフ倶楽部',a:'三重県津市一志町大仰2961'},
+  {n:'フォレスト三木ゴルフ倶楽部',a:'兵庫県三木市細川町桃津571-143'},
+  {n:'入来城山ゴルフ倶楽部',a:'鹿児島県薩摩川内市入来町浦之名4890-11'},
+  {n:'PGMゴルフリゾート沖縄',a:'沖縄県国頭郡恩納村字冨着1043'}
+];
+
+// ============================================================
+//  STATE
+// ============================================================
+let currentYear, currentMonth, selectedDate = null;
+let cartData = {};
+let messages = [];
+let weatherCache = {};
+let siteConfig = {
+  courseName: '', companyName: '', areaName: '',
+  lat: null, lon: null, courseAddr: '',
+  firebaseUrl: '', firebaseKey: ''
+};
+
+let firebaseApp = null;
+let db = null;
+let useFirebase = false;
+let fbListenersAttached = false;
+let selectedCourseIdx = -1; // -1 = manual, 0+ = AG_COURSES index
+
+const STORAGE_KEY_CONFIG = 'cart_board_site_config';
+
+const DEPT_MAP = {
+  'コース管理課': 'course',
+  '事務所':       'office',
+  'フロント':     'front',
+  'マスター室':   'master',
+  'レストラン':   'restaurant',
+};
+
+// ============================================================
+//  GEOCODING (Open-Meteo)
+// ============================================================
+function extractSearchTerms(addr) {
+        // Returns array of search terms to try, from most specific to least
+        const terms = [];
+        const prefRe = /^(東京都|北海道|(?:京都|大阪)府|.+?県)/;
+        const noPref = addr.replace(prefRe, '');
+        const pref = (addr.match(prefRe) || ['',''])[1];
+
+        // For 市 addresses
+        const cityM = noPref.match(/^(.+?市)/);
+        if (cityM) {
+          terms.push(cityM[1]);
+          const bare = cityM[1].replace(/市$/, '');
+          if (bare.length >= 2) terms.push(bare);
+          return terms;
+        }
+
+        // For 郡 addresses
+        const gunM = noPref.match(/^(.+?郡)(.+?[町村])/);
+        if (gunM) {
+          terms.push(gunM[2]);
+          const bare = gunM[2].replace(/[町村]$/, '');
+          if (bare.length >= 2) terms.push(bare);
+          terms.push(gunM[1].replace(/郡$/, ''));
+        }
+
+        // For direct 町/村 (no 郡)
+        const townM = noPref.match(/^(.+?[町村])/);
+        if (townM && terms.length === 0) {
+          terms.push(townM[1]);
+          const bare = townM[1].replace(/[町村]$/, '');
+          if (bare.length >= 2) terms.push(bare);
+        }
+
+        // Fallback: prefecture name without suffix
+        if (pref) {
+          terms.push(pref.replace(/[都道府県]$/, ''));
+        }
+
+        if (terms.length === 0) {
+          terms.push(noPref.substring(0, 4));
+        }
+        return terms;
+      }
+
+      function extractCityFromAddr(addr) {
+        const terms = extractSearchTerms(addr);
+        return terms[0] || addr.substring(0, 4);
+      }
+
+      function extractPrefecture(addr) {
+        const m = addr.match(/^(東京都|北海道|(?:京都|大阪)府|.+?県)/);
+        return m ? m[1] : '';
+      }
+
+      async function geocodeAddress(addr) {
+        const terms = extractSearchTerms(addr);
+        const pref = extractPrefecture(addr);
+
+        for (const term of terms) {
+          try {
+            const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(term)}&count=10&language=ja&format=json`;
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (data.results && data.results.length > 0) {
+              let best = data.results[0];
+              if (pref) {
+                const prefBase = pref.replace(/[都道府県]$/, '');
+                for (const r of data.results) {
+                  if (r.admin1 && r.admin1.includes(prefBase)) {
+                    best = r; break;
+                  }
+                }
+              }
+              return { lat: Math.round(best.latitude * 100) / 100, lon: Math.round(best.longitude * 100) / 100, name: best.name };
+            }
+          } catch(e) {
+            console.error('Geocoding attempt failed for:', term, e);
+          }
+        }
+        return null;
+      }
+
+// ============================================================
+//  COURSE SEARCH UI
+// ============================================================
+function initCourseSearch() {
+  const input = document.getElementById('courseSearchInput');
+  const dropdown = document.getElementById('courseDropdown');
+
+  input.addEventListener('focus', () => { showDropdown(input.value); });
+  input.addEventListener('input', () => { showDropdown(input.value); });
+
+  // Close dropdown on outside click
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.course-search-wrap')) {
+      dropdown.classList.remove('open');
+    }
+  });
+}
+
+function showDropdown(query) {
+  const dropdown = document.getElementById('courseDropdown');
+  const q = query.trim().toLowerCase();
+
+  let filtered = AG_COURSES.map((c, i) => ({ ...c, idx: i }));
+  if (q) {
+    filtered = filtered.filter(c =>
+      c.n.toLowerCase().includes(q) || c.a.toLowerCase().includes(q)
+    );
+  }
+
+  let html = '';
+  const max = 30; // Show max 30 results
+  filtered.slice(0, max).forEach(c => {
+    html += `<div class="cd-item" onclick="selectCourse(${c.idx})">
+      <b>${highlightMatch(c.n, q)}</b>
+      <div class="cd-addr">${c.a}</div>
+    </div>`;
+  });
+  if (filtered.length > max) {
+    html += `<div class="cd-item" style="color:#999;text-align:center;cursor:default;">
+      他 ${filtered.length - max} 件 — 検索を絞り込んでください
+    </div>`;
+  }
+  // Manual option at bottom
+  html += `<div class="cd-item cd-manual" onclick="selectManual()">✏️ その他（手入力）</div>`;
+
+  dropdown.innerHTML = html;
+  dropdown.classList.add('open');
+}
+
+function highlightMatch(text, query) {
+  if (!query) return text;
+  const idx = text.toLowerCase().indexOf(query);
+  if (idx === -1) return text;
+  return text.substring(0, idx) + '<mark>' + text.substring(idx, idx + query.length) + '</mark>' + text.substring(idx + query.length);
+}
+
+async function selectCourse(idx) {
+  const c = AG_COURSES[idx];
+  selectedCourseIdx = idx;
+
+  document.getElementById('courseDropdown').classList.remove('open');
+  document.getElementById('courseSearchInput').value = c.n;
+
+  // Show selected info
+  const info = document.getElementById('courseSelectedInfo');
+  info.classList.add('active');
+  document.getElementById('csiName').textContent = c.n;
+  document.getElementById('csiAddr').textContent = '📍 ' + c.a;
+  document.getElementById('csiGeo').textContent = '🔄 天気予報の位置情報を取得中...';
+  document.getElementById('csiGeo').style.color = '#1565c0';
+
+  // Hide manual fields
+  document.getElementById('manualFields').classList.remove('active');
+
+  // Geocode
+  const geo = await geocodeAddress(c.a);
+  if (geo) {
+    document.getElementById('csiGeo').textContent = `✅ ${geo.name}（${geo.lat}, ${geo.lon}）の天気を表示します`;
+    document.getElementById('csiGeo').style.color = '#2e7d32';
+    // Store temporarily for saving
+    info.dataset.lat = geo.lat;
+    info.dataset.lon = geo.lon;
+    info.dataset.area = geo.name;
+  } else {
+    document.getElementById('csiGeo').textContent = '⚠️ 位置情報の取得に失敗しました。保存後に手動で設定してください';
+    document.getElementById('csiGeo').style.color = '#e65100';
+    info.dataset.lat = '';
+    info.dataset.lon = '';
+    info.dataset.area = '';
+  }
+}
+
+function selectManual() {
+  selectedCourseIdx = -1;
+  document.getElementById('courseDropdown').classList.remove('open');
+  document.getElementById('courseSearchInput').value = 'その他（手入力）';
+  document.getElementById('courseSelectedInfo').classList.remove('active');
+  document.getElementById('manualFields').classList.add('active');
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+function init() {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth();
+
+  loadConfig();
+  initFirebase();
+  loadData();
+  applyConfig();
+  renderCalendar();
+  updateTodayInfo();
+  updateTodayStatus();
+  fetchWeather();
+  renderMessages();
+  initCourseSearch();
+
+  if (!siteConfig.courseName) openSettings();
+}
+
+// ============================================================
+//  CONFIG
+// ============================================================
+function loadConfig() {
+  try {
+    const c = localStorage.getItem(STORAGE_KEY_CONFIG);
+    if (c) Object.assign(siteConfig, JSON.parse(c));
+  } catch(e) {}
+}
+function saveConfigStorage() {
+  localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(siteConfig));
+}
+
+function courseId() {
+  // Sanitized course name for use as storage/firebase key
+  return (siteConfig.courseName || 'default').replace(/[.#$/\[\]\s　]/g, '_');
+}
+
+function storagePrefix() {
+  return 'cb_' + courseId();
+}
+
+function fbPath() {
+  return 'courses/' + courseId();
+}
+
+// ============================================================
+//  FIREBASE
+// ============================================================
+function initFirebase() {
+  if (firebaseApp) {
+    try {
+      if (db && fbListenersAttached) {
+        db.ref(fbPath() + '/cart').off();
+        db.ref(fbPath() + '/messages').off();
+      }
+    } catch(e) {}
+    fbListenersAttached = false;
+  }
+
+  const url = siteConfig.firebaseUrl;
+  const key = siteConfig.firebaseKey;
+
+  if (!url || !key) {
+    useFirebase = false;
+    updateConnBadge(false);
+    return;
+  }
+
+  try {
+    const config = { apiKey: key, databaseURL: url };
+    if (firebaseApp) {
+      firebaseApp.delete().catch(()=>{});
+    }
+    firebaseApp = firebase.initializeApp(config, 'cartBoard_' + Date.now());
+    db = firebaseApp.database();
+    useFirebase = true;
+    updateConnBadge(true);
+    attachFirebaseListeners();
+  } catch(e) {
+    console.error('Firebase初期化エラー:', e);
+    useFirebase = false;
+    updateConnBadge(false);
+  }
+}
+
+function attachFirebaseListeners() {
+  if (!db || fbListenersAttached) return;
+  const path = fbPath();
+
+  db.ref(path + '/cart').on('value', snap => {
+    const val = snap.val();
+    if (val) {
+      cartData = val;
+      localStorage.setItem(storagePrefix() + '_cart', JSON.stringify(cartData));
+      renderCalendar();
+      updateTodayStatus();
+    } else {
+      if (Object.keys(cartData).length > 0) {
+        db.ref(path + '/cart').set(cartData).catch(e => console.error('初回同期エラー(cart):', e));
+      }
+    }
+  }, err => {
+    console.error('Firebase cart読取エラー:', err);
+    updateConnBadge(false);
+  });
+
+  db.ref(path + '/messages').on('value', snap => {
+    const val = snap.val();
+    if (val) {
+      messages = Object.values(val);
+      localStorage.setItem(storagePrefix() + '_msg', JSON.stringify(messages));
+      renderMessages();
+    } else {
+      if (messages.length > 0) {
+        const msgObj = {};
+        messages.forEach(m => { msgObj['m' + m.id] = m; });
+        db.ref(path + '/messages').set(msgObj).catch(e => console.error('初回同期エラー(msg):', e));
+      }
+    }
+  }, err => {
+    console.error('Firebase msg読取エラー:', err);
+    updateConnBadge(false);
+  });
+
+  fbListenersAttached = true;
+}
+
+function updateConnBadge(online) {
+  const badge = document.getElementById('connBadge');
+  const text = document.getElementById('connText');
+  const fbSt = document.getElementById('fbStatusDisplay');
+  const fbTx = document.getElementById('fbStatusText');
+
+  if (online) {
+    badge.className = 'conn-badge online';
+    text.textContent = 'クラウド同期中';
+    fbSt.className = 'fb-status connected';
+    fbTx.textContent = 'Firebase接続済み（リアルタイム同期中）';
+  } else {
+    badge.className = 'conn-badge offline';
+    text.textContent = 'ローカル';
+    fbSt.className = 'fb-status disconnected';
+    fbTx.textContent = 'Firebase未接続（ローカル保存モード）';
+  }
+}
+
+// ============================================================
+//  DATA PERSISTENCE
+// ============================================================
+function loadData() {
+  try {
+    const cd = localStorage.getItem(storagePrefix() + '_cart');
+    if (cd) cartData = JSON.parse(cd);
+    const md = localStorage.getItem(storagePrefix() + '_msg');
+    if (md) messages = JSON.parse(md);
+  } catch(e) {}
+}
+
+function saveCartData() {
+  localStorage.setItem(storagePrefix() + '_cart', JSON.stringify(cartData));
+  if (useFirebase && db) {
+    db.ref(fbPath() + '/cart').set(cartData).catch(e => {
+      console.error('Firebase cart書込エラー:', e);
+    });
+  }
+}
+
+function saveMessages() {
+  localStorage.setItem(storagePrefix() + '_msg', JSON.stringify(messages));
+  if (useFirebase && db) {
+    const msgObj = {};
+    messages.forEach(m => { msgObj['m' + m.id] = m; });
+    db.ref(fbPath() + '/messages').set(msgObj).catch(e => {
+      console.error('Firebase msg書込エラー:', e);
+    });
+  }
+}
+
+// ============================================================
+//  SETTINGS UI
+// ============================================================
+function applyConfig() {
+  const club = siteConfig.companyName
+    ? `${siteConfig.companyName}<br>${siteConfig.courseName}`
+    : (siteConfig.courseName || 'ゴルフ場未設定');
+  document.getElementById('headerClubName').innerHTML = club;
+  document.title = `カート乗入れ共有ボード｜${siteConfig.courseName || 'ゴルフ場'}`;
+  document.getElementById('weatherHeader').textContent =
+    `🌤️ 7日間天気予報（${siteConfig.areaName || '地域未設定'}）`;
+}
+
+function openSettings() {
+  // Determine if current config matches an AG course
+  const matchIdx = AG_COURSES.findIndex(c => c.n === siteConfig.courseName);
+
+  const searchInput = document.getElementById('courseSearchInput');
+  const info = document.getElementById('courseSelectedInfo');
+  const manual = document.getElementById('manualFields');
+
+  if (matchIdx >= 0) {
+    selectedCourseIdx = matchIdx;
+    searchInput.value = siteConfig.courseName;
+    info.classList.add('active');
+    document.getElementById('csiName').textContent = siteConfig.courseName;
+    document.getElementById('csiAddr').textContent = '📍 ' + AG_COURSES[matchIdx].a;
+    if (siteConfig.lat && siteConfig.lon) {
+      document.getElementById('csiGeo').textContent = `✅ ${siteConfig.areaName}（${siteConfig.lat}, ${siteConfig.lon}）の天気を表示中`;
+      document.getElementById('csiGeo').style.color = '#2e7d32';
+    }
+    info.dataset.lat = siteConfig.lat || '';
+    info.dataset.lon = siteConfig.lon || '';
+    info.dataset.area = siteConfig.areaName || '';
+    manual.classList.remove('active');
+  } else if (siteConfig.courseName) {
+    selectedCourseIdx = -1;
+    searchInput.value = 'その他（手入力）';
+    info.classList.remove('active');
+    manual.classList.add('active');
+  } else {
+    selectedCourseIdx = -1;
+    searchInput.value = '';
+    info.classList.remove('active');
+    manual.classList.remove('active');
+  }
+
+  document.getElementById('settCourseName').value = siteConfig.courseName || '';
+  document.getElementById('settCompanyName').value = siteConfig.companyName || '';
+  document.getElementById('settAreaName').value = siteConfig.areaName || '';
+  document.getElementById('settLat').value = siteConfig.lat || '';
+  document.getElementById('settLon').value = siteConfig.lon || '';
+  document.getElementById('settFirebaseUrl').value = siteConfig.firebaseUrl || '';
+  document.getElementById('settFirebaseKey').value = siteConfig.firebaseKey || '';
+  document.getElementById('settingsModal').classList.add('active');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('active');
+}
+
+function saveSettings() {
+  const oldCourseId = courseId();
+
+  if (selectedCourseIdx >= 0) {
+    // AG course selected
+    const c = AG_COURSES[selectedCourseIdx];
+    const info = document.getElementById('courseSelectedInfo');
+    siteConfig.courseName = c.n;
+    siteConfig.companyName = 'アコーディア・ゴルフ';
+    siteConfig.courseAddr = c.a;
+    siteConfig.lat = parseFloat(info.dataset.lat) || null;
+    siteConfig.lon = parseFloat(info.dataset.lon) || null;
+    siteConfig.areaName = info.dataset.area || extractCityFromAddr(c.a);
+  } else {
+    // Manual input
+    siteConfig.courseName = document.getElementById('settCourseName').value.trim();
+    siteConfig.companyName = document.getElementById('settCompanyName').value.trim();
+    siteConfig.areaName = document.getElementById('settAreaName').value.trim();
+    siteConfig.lat = parseFloat(document.getElementById('settLat').value) || null;
+    siteConfig.lon = parseFloat(document.getElementById('settLon').value) || null;
+  }
+
+  siteConfig.firebaseUrl = document.getElementById('settFirebaseUrl').value.trim();
+  siteConfig.firebaseKey = document.getElementById('settFirebaseKey').value.trim();
+
+  saveConfigStorage();
+  initFirebase();
+
+  const newCourseId = courseId();
+  if (oldCourseId !== newCourseId) {
+    cartData = {};
+    messages = [];
+    loadData();
+  }
+
+  applyConfig();
+  closeSettings();
+  fetchWeather();
+  renderCalendar();
+  updateTodayStatus();
+  renderMessages();
+}
+
+// ============================================================
+//  CALENDAR
+// ============================================================
+function dateKey(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function todayKey() {
+  const n = new Date();
+  return dateKey(n.getFullYear(), n.getMonth(), n.getDate());
+}
+function formatDate(key) {
+  const [y,m,d] = key.split('-');
+  const dow = ['日','月','火','水','木','金','土'][new Date(+y,+m-1,+d).getDay()];
+  return `${+m}月${+d}日（${dow}）`;
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  document.getElementById('monthLabel').textContent = `${currentYear}年${currentMonth + 1}月`;
+
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const tk = todayKey();
+
+  let html = '';
+  ['日','月','火','水','木','金','土'].forEach((d, i) => {
+    html += `<div class="cal-dow ${i===0?'sun':i===6?'sat':''}">${d}</div>`;
+  });
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-cell empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = dateKey(currentYear, currentMonth, d);
+    const dow = new Date(currentYear, currentMonth, d).getDay();
+    const data = cartData[key] || {};
+    const dowCls = dow === 0 ? 'sun' : dow === 6 ? 'sat' : '';
+
+    let badge = '';
+    if (data.status === 'ok') badge = '<div class="status-badge badge-ok">乗入可</div>';
+    else if (data.status === 'ng') badge = '<div class="status-badge badge-ng">不 可</div>';
+
+    let wx = '';
+    if (weatherCache[key]) {
+      const w = weatherCache[key];
+      wx = `<div class="weather-mini"><span class="wx-icon">${w.icon}</span> ${w.tMax}°/${w.tMin}°</div>`;
+    }
+
+    html += `<div class="cal-cell ${key===tk?'today':''} ${key===selectedDate?'selected-cell':''}" onclick="selectDate('${key}')">
+      <div class="day-num ${dowCls}">${d}</div>${badge}${wx}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  selectedDate = null;
+  document.getElementById('detailPanel').classList.remove('active');
+  renderCalendar();
+}
+
+function selectDate(key) {
+  selectedDate = key;
+  document.getElementById('detailPanel').classList.add('active');
+  document.getElementById('detailTitle').textContent = `📝 ${formatDate(key)} の設定`;
+  const data = cartData[key] || {};
+  document.querySelectorAll('.status-btn').forEach(btn => {
+    btn.className = 'status-btn';
+    if (data.status && btn.dataset.status === data.status) {
+      btn.classList.add(data.status === 'ok' ? 'sel-ok' : 'sel-ng');
+    }
+  });
+  document.getElementById('detailNote').value = data.note || '';
+  renderCalendar();
+}
+
+function selectStatus(status) {
+  if (!selectedDate) return;
+  if (status === 'clear') {
+    if (cartData[selectedDate]) {
+      delete cartData[selectedDate].status;
+      if (!cartData[selectedDate].note) {
+        delete cartData[selectedDate];
+      }
+    }
+    document.querySelectorAll('.status-btn').forEach(btn => {
+      btn.className = 'status-btn';
+      if (btn.dataset.status === 'clear') btn.classList.add('sel-clear');
+    });
+  } else {
+    if (!cartData[selectedDate]) cartData[selectedDate] = {};
+    cartData[selectedDate].status = status;
+    document.querySelectorAll('.status-btn').forEach(btn => {
+      btn.className = 'status-btn';
+      if (btn.dataset.status === status) {
+        btn.classList.add(status === 'ok' ? 'sel-ok' : 'sel-ng');
+      }
+    });
+  }
+}
+
+function saveDetail() {
+  if (!selectedDate) return;
+  if (!cartData[selectedDate]) cartData[selectedDate] = {};
+  cartData[selectedDate].note = document.getElementById('detailNote').value;
+  saveCartData();
+  renderCalendar();
+  updateTodayStatus();
+  const btn = document.querySelector('.detail-panel .save-btn');
+  btn.textContent = '✅ 保存しました！';
+  setTimeout(() => btn.textContent = '💾 保存', 1500);
+}
+
+// ============================================================
+//  TODAY STATUS
+// ============================================================
+function updateTodayInfo() {
+  const now = new Date();
+  const dow = ['日','月','火','水','木','金','土'][now.getDay()];
+  document.getElementById('todayInfo').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${dow}）`;
+}
+
+function updateTodayStatus() {
+  const data = cartData[todayKey()] || {};
+  const el = document.getElementById('todayStatusValue');
+  const noteEl = document.getElementById('todayStatusNote');
+  if (data.status === 'ok') {
+    el.textContent = '✅ 乗入れ可'; el.className = 'ts-value ok';
+  } else if (data.status === 'ng') {
+    el.textContent = '🚫 乗入れ不可'; el.className = 'ts-value ng';
+  } else {
+    el.textContent = '― 未設定 ―'; el.className = 'ts-value undecided';
+  }
+  noteEl.textContent = data.note || '';
+}
+
+// ============================================================
+//  WEATHER
+// ============================================================
+async function fetchWeather() {
+  const { lat, lon } = siteConfig;
+  if (!lat || !lon) {
+    document.getElementById('weatherList').innerHTML =
+      '<div class="loading">⚙️ 設定画面から事業所を選択すると<br>天気予報が自動表示されます</div>';
+    return;
+  }
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FTokyo&forecast_days=7`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const d = json.daily;
+    const tk = todayKey();
+    weatherCache = {};
+    let html = '';
+
+    for (let i = 0; i < d.time.length; i++) {
+      const date = d.time[i];
+      const icon = wxIcon(d.weather_code[i]);
+      const desc = wxDesc(d.weather_code[i]);
+      const tMax = Math.round(d.temperature_2m_max[i]);
+      const tMin = Math.round(d.temperature_2m_min[i]);
+      const rain = d.precipitation_sum[i];
+      const rainP = d.precipitation_probability_max[i];
+      const wind = Math.round(d.wind_speed_10m_max[i]);
+      const isToday = date === tk;
+      const [y,m,dd] = date.split('-');
+      const dow = ['日','月','火','水','木','金','土'][new Date(+y,+m-1,+dd).getDay()];
+
+      weatherCache[date] = { icon, tMax, tMin, rain, rainP };
+
+      html += `<div class="weather-item ${isToday?'today-wx':''}">
+        <div>${isToday?'<b>今日</b>':`${+m}/${+dd}(${dow})`}</div>
+        <div class="wx-icon">${icon}</div>
+        <div class="wx-detail">
+          <div class="wx-temp">${tMax}° / ${tMin}°  ${desc}</div>
+          <div class="wx-rain">💧 ${rain}mm（${rainP}%） 💨 ${wind}km/h</div>
+        </div>
+      </div>`;
+    }
+    document.getElementById('weatherList').innerHTML = html;
+
+    if (d.time.length > 0 && weatherCache[d.time[0]]) {
+      const t = weatherCache[d.time[0]];
+      document.getElementById('todayWeatherSummary').innerHTML =
+        `${t.icon} ${t.tMax}°/${t.tMin}° 降水${t.rain}mm`;
+    }
+    renderCalendar();
+  } catch(e) {
+    console.error('天気取得エラー:', e);
+    document.getElementById('weatherList').innerHTML =
+      `<div class="loading">⚠️ 天気データの取得に失敗しました<br><small>${e.message}</small></div>`;
+  }
+}
+
+function wxIcon(c) {
+  if (c===0) return '☀️'; if (c<=3) return '⛅'; if (c<=48) return '🌫️';
+  if (c<=57) return '🌦️'; if (c<=67) return '🌧️'; if (c<=77) return '🌨️';
+  if (c<=82) return '🌧️'; if (c<=86) return '🌨️'; if (c>=95) return '⛈️';
+  return '☁️';
+}
+function wxDesc(c) {
+  if (c===0) return '快晴'; if (c<=3) return '晴れ/曇り'; if (c<=48) return '霧';
+  if (c<=57) return '霧雨'; if (c<=65) return '雨'; if (c<=67) return '凍雨';
+  if (c<=77) return '雪'; if (c<=82) return 'にわか雨'; if (c<=86) return 'にわか雪';
+  if (c>=95) return '雷雨'; return '曇り';
+}
+
+// ============================================================
+//  MESSAGE BOARD
+// ============================================================
+function renderMessages() {
+  const el = document.getElementById('msgList');
+  if (!messages.length) {
+    el.innerHTML = '<div style="color:#999;text-align:center;padding:14px;font-size:13px;">連絡事項はまだありません</div>';
+    return;
+  }
+  const sorted = [...messages].sort((a,b) => b.id - a.id);
+  let html = '';
+  sorted.forEach(m => {
+    const t = new Date(m.id);
+    const ts = `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+    const dc = DEPT_MAP[m.dept] || 'course';
+    html += `<div class="msg-item dept-${dc}">
+      <div class="msg-meta">
+        <span><span class="msg-dept-tag tag-${dc}">${m.dept}</span> ${ts}</span>
+        <span class="msg-delete" onclick="deleteMessage(${m.id})" title="削除">✕</span>
+      </div>
+      <div class="msg-text">${escHtml(m.text)}</div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function postMessage() {
+  const dept = document.getElementById('msgDept').value;
+  const text = document.getElementById('msgText').value.trim();
+  if (!text) { alert('連絡事項を入力してください'); return; }
+  messages.push({ id: Date.now(), dept, text });
+  saveMessages();
+  renderMessages();
+  document.getElementById('msgText').value = '';
+}
+
+function deleteMessage(id) {
+  if (!confirm('この連絡を削除しますか？')) return;
+  messages = messages.filter(m => m.id !== id);
+  saveMessages();
+  renderMessages();
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ============================================================
+//  START
+// ============================================================
+init();
+</script>
+</body>
+</html>
