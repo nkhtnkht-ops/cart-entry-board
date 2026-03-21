@@ -438,6 +438,49 @@
     .card { break-inside: avoid; }
     .modal-overlay { display: none !important; }
   }
+
+  /* ===== Shift Table Feature ===== */
+  .shift-bar {
+    margin-top: 10px; padding: 8px 10px;
+    background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+  }
+  .shift-bar-label { font-size: 11px; color: #777; margin-bottom: 6px; font-weight: 600; letter-spacing: 0.3px; }
+  .shift-links { display: flex; flex-wrap: wrap; gap: 6px; }
+  .shift-link-btn {
+    display: flex; align-items: center; gap: 4px;
+    padding: 5px 12px; border: 1.5px solid; border-radius: 20px;
+    font-size: 12px; font-weight: 600; background: #fff; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .shift-link-btn.has-shift:hover { opacity: 0.75; transform: translateY(-1px); }
+  .shift-link-btn.no-shift { opacity: 0.35; cursor: default; border-style: dashed; }
+
+  /* Shift upload in settings */
+  .shift-dept-tabs { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+  .shift-dept-tab {
+    padding: 5px 12px; border: 1.5px solid #ccc; border-radius: 20px;
+    background: #fff; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .shift-preview-box {
+    min-height: 80px; border: 1.5px dashed #ccc; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; background: #fafafa; margin-bottom: 8px;
+  }
+  .shift-preview-box img { max-width: 100%; max-height: 200px; object-fit: contain; display: block; }
+  .shift-preview-none { font-size: 12px; color: #aaa; padding: 16px; text-align: center; }
+  .shift-upload-btns { display: flex; gap: 8px; }
+  .shift-upload-btns button {
+    flex: 1; padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+  }
+  .shift-upload-status { font-size: 12px; color: #555; margin-top: 6px; min-height: 18px; }
+
+  /* Shift viewer modal */
+  .shift-viewer-content {
+    overflow: auto; text-align: center; padding: 8px;
+    background: #111; max-height: calc(90vh - 56px);
+  }
+  .shift-viewer-content img { max-width: 100%; height: auto; display: inline-block; transition: opacity 0.2s; }
+
 </style>
 </head>
 <body>
@@ -521,6 +564,29 @@
       <!-- 互換性のため非表示で保持 -->
       <input type="hidden" id="settFirebaseUrl">
       <input type="hidden" id="settFirebaseKey">
+
+      <!-- シフト表管理 -->
+      <div class="section-title">📋 月次シフト表管理</div>
+      <div style="margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+        <select id="shiftUploadMonth" onchange="loadShiftPreview()" style="flex:1; padding:6px 8px; border:1px solid #ccc; border-radius:6px; font-size:13px;"></select>
+        <span style="font-size:11px; color:#777;">月を選択</span>
+      </div>
+      <div class="shift-dept-tabs" id="shiftDeptTabs">
+        <button class="shift-dept-tab" data-dept="office"     onclick="selectShiftDept('office')">事務所</button>
+        <button class="shift-dept-tab" data-dept="course"     onclick="selectShiftDept('course')">コース</button>
+        <button class="shift-dept-tab" data-dept="restaurant" onclick="selectShiftDept('restaurant')">レストラン</button>
+        <button class="shift-dept-tab" data-dept="master"     onclick="selectShiftDept('master')">マスター室</button>
+      </div>
+      <div class="shift-preview-box" id="shiftPreviewBox">
+        <div class="shift-preview-none" id="shiftPreviewNone">📭 未登録</div>
+        <img id="shiftPreviewImg" src="" style="display:none;" alt="シフトプレビュー">
+      </div>
+      <div class="shift-upload-btns">
+        <input type="file" id="shiftFileInput" accept="image/*" style="display:none;" onchange="handleShiftFile(event)">
+        <button onclick="document.getElementById('shiftFileInput').click()" style="background:#1976d2; color:#fff;">📸 画像をアップロード</button>
+        <button id="shiftDeleteBtn" onclick="confirmDeleteShift()" style="background:#f44336; color:#fff; opacity:0.4;" disabled>🗑️ 削除</button>
+      </div>
+      <div class="shift-upload-status" id="shiftUploadStatus"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeSettings()">キャンセル</button>
@@ -528,6 +594,20 @@
     </div>
   </div>
 </div>
+<!-- ===== Shift Viewer Modal ===== -->
+<div class="modal-overlay" id="shiftModal">
+  <div class="modal" style="max-width:min(95vw,900px); padding:0; overflow:hidden;">
+    <div class="modal-header" style="padding:12px 16px;">
+      <span id="shiftModalTitle">シフト表</span>
+      <button class="close-btn" onclick="closeShiftModal()">&times;</button>
+    </div>
+    <div class="shift-viewer-content">
+      <img id="shiftModalImg" src="" alt="シフト表">
+    </div>
+  </div>
+</div>
+
+
 
 <!-- ===== Header ===== -->
 <div class="header">
@@ -576,6 +656,12 @@
           <span><span class="dot" style="background:var(--ng-color)"></span> 乗入れ不可</span>
           <span><span class="dot" style="background:var(--undecided-color)"></span> 未設定</span>
         </div>
+        <!-- Shift bar -->
+        <div class="shift-bar" id="shiftBar">
+          <div class="shift-bar-label">📋 シフト表</div>
+          <div class="shift-links" id="shiftLinks"></div>
+        </div>
+
         <div class="detail-panel" id="detailPanel">
           <h3 id="detailTitle"></h3>
           <div class="status-selector">
@@ -1077,6 +1163,7 @@ function init() {
 
   loadConfig();
   initFirebase();
+  loadShiftMeta();
   loadData();
   applyConfig();
   renderCalendar();
@@ -1372,6 +1459,7 @@ function openSettings() {
   document.getElementById('settEmailjsServiceId').value = siteConfig.emailjsServiceId || '';
   document.getElementById('settEmailjsTemplateId').value = siteConfig.emailjsTemplateId || '';
   document.getElementById('settEmailjsPublicKey').value = siteConfig.emailjsPublicKey || '';
+  initShiftUI();
   document.getElementById('settingsModal').classList.add('active');
 }
 
@@ -1477,6 +1565,7 @@ function renderCalendar() {
       <div class="day-num ${dowCls}">${d}</div>${badge}${wx}${scheduleText}</div>`;
   }
   grid.innerHTML = html;
+  renderShiftBar();
 }
 
 function changeMonth(delta) {
@@ -1697,6 +1786,242 @@ function escHtml(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+// ============================================================
+//  SHIFT TABLE MANAGEMENT
+// ============================================================
+const SHIFT_DEPTS = [
+  { key: 'office',     label: '事務所',    color: '#1565c0' },
+  { key: 'course',     label: 'コース',    color: '#2e7d32' },
+  { key: 'restaurant', label: 'レストラン', color: '#c62828' },
+  { key: 'master',     label: 'マスター室', color: '#6a1b9a' },
+];
+
+let shiftMeta    = {};  // { 'YYYY-MM': { office:{ts,name,kb}, ... } }
+let shiftImgCache = {}; // { 'YYYY-MM/office': 'data:image/jpeg;base64,...' }
+let currentShiftDept = 'office';
+
+/* --- init shift UI (called when settings modal opens) --- */
+function initShiftUI() {
+  const sel = document.getElementById('shiftUploadMonth');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const now = new Date();
+  for (let i = -1; i <= 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const ym = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const label = d.getFullYear() + '年' + (d.getMonth()+1) + '月';
+    const opt = document.createElement('option');
+    opt.value = ym; opt.textContent = label;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  selectShiftDept('office');
+}
+
+function selectShiftDept(dept) {
+  currentShiftDept = dept;
+  document.querySelectorAll('.shift-dept-tab').forEach(t => {
+    const d = SHIFT_DEPTS.find(x => x.key === t.dataset.dept);
+    const active = t.dataset.dept === dept;
+    t.classList.toggle('active', active);
+    t.style.background   = active ? d.color : '#fff';
+    t.style.color        = active ? '#fff'  : d.color;
+    t.style.borderColor  = d.color;
+  });
+  loadShiftPreview();
+}
+
+function loadShiftPreview() {
+  const ym    = document.getElementById('shiftUploadMonth')?.value;
+  const img   = document.getElementById('shiftPreviewImg');
+  const none  = document.getElementById('shiftPreviewNone');
+  const delBtn = document.getElementById('shiftDeleteBtn');
+  const status = document.getElementById('shiftUploadStatus');
+  if (!ym || !img) return;
+
+  const dept     = currentShiftDept;
+  const cacheKey = ym + '/' + dept;
+  const hasMeta  = shiftMeta[ym]?.[dept];
+  const cached   = shiftImgCache[cacheKey];
+
+  status.textContent = '';
+  if (cached) {
+    img.src = cached; img.style.display = '';
+    none.style.display = 'none';
+    delBtn.disabled = false; delBtn.style.opacity = '1';
+    if (hasMeta) status.textContent = '📁 ' + (hasMeta.name || '');
+  } else if (hasMeta) {
+    img.style.display = 'none';
+    none.innerHTML = '⏳ 読み込み中...'; none.style.display = '';
+    delBtn.disabled = false; delBtn.style.opacity = '1';
+    fetchShiftImage(ym, dept, dataUrl => {
+      if (dataUrl) {
+        img.src = dataUrl; img.style.display = '';
+        none.style.display = 'none';
+        status.textContent = '📁 ' + (hasMeta.name || '');
+      } else {
+        none.innerHTML = '❌ 読み込みエラー';
+      }
+    });
+  } else {
+    img.src = ''; img.style.display = 'none';
+    none.innerHTML = '📭 未登録'; none.style.display = '';
+    delBtn.disabled = true; delBtn.style.opacity = '0.4';
+  }
+}
+
+/* --- Load shift metadata (called at startup) --- */
+function loadShiftMeta() {
+  if (!useFirebase || !db) {
+    try {
+      const m = localStorage.getItem(storagePrefix() + '_shift_meta');
+      if (m) shiftMeta = JSON.parse(m);
+      const imgs = localStorage.getItem(storagePrefix() + '_shift_imgs');
+      if (imgs) shiftImgCache = JSON.parse(imgs);
+    } catch(e) {}
+    renderShiftBar();
+    return;
+  }
+  db.ref(fbPath() + '/shift-meta').on('value', snap => {
+    shiftMeta = snap.val() || {};
+    renderShiftBar();
+  }, err => console.error('shift-meta read error:', err));
+}
+
+/* --- Fetch a specific shift image on demand --- */
+function fetchShiftImage(ym, dept, cb) {
+  const key = ym + '/' + dept;
+  if (shiftImgCache[key]) { cb(shiftImgCache[key]); return; }
+  if (!useFirebase || !db) { cb(null); return; }
+  db.ref(fbPath() + '/shift-imgs/' + ym + '/' + dept).once('value', snap => {
+    const val = snap.val();
+    if (val) { shiftImgCache[key] = val; cb(val); }
+    else cb(null);
+  }, err => { console.error('shift-img fetch error:', err); cb(null); });
+}
+
+/* --- Upload handler --- */
+function handleShiftFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { alert('画像ファイル（JPG・PNG）を選択してください'); return; }
+  const ym     = document.getElementById('shiftUploadMonth').value;
+  const dept   = currentShiftDept;
+  const status = document.getElementById('shiftUploadStatus');
+  status.textContent = '⏳ 画像を処理中...';
+
+  compressShiftImage(file, 1400, 0.82, dataUrl => {
+    const kb = Math.round(dataUrl.length * 0.75 / 1024);
+    if (kb > 800 && !confirm(`画像サイズが大きめです（約${kb}KB）。このまま保存しますか？`)) {
+      status.textContent = ''; e.target.value = ''; return;
+    }
+    const meta = { ts: Date.now(), name: file.name, kb };
+    if (!shiftMeta[ym]) shiftMeta[ym] = {};
+    shiftMeta[ym][dept] = meta;
+    shiftImgCache[ym + '/' + dept] = dataUrl;
+
+    if (useFirebase && db) {
+      const base = fbPath();
+      db.ref(base + '/shift-meta/' + ym + '/' + dept).set(meta)
+        .then(() => db.ref(base + '/shift-imgs/' + ym + '/' + dept).set(dataUrl))
+        .then(() => { status.textContent = `✅ 保存しました（${kb}KB）`; })
+        .catch(err => { console.error('shift save error:', err); status.textContent = '❌ 保存に失敗しました'; });
+    } else {
+      try {
+        localStorage.setItem(storagePrefix() + '_shift_meta', JSON.stringify(shiftMeta));
+        localStorage.setItem(storagePrefix() + '_shift_imgs', JSON.stringify(shiftImgCache));
+      } catch(err) {}
+      status.textContent = `✅ ローカル保存しました（${kb}KB）`;
+    }
+    renderShiftBar();
+    loadShiftPreview();
+    e.target.value = '';
+  });
+}
+
+function compressShiftImage(file, maxW, quality, cb) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      cb(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* --- Delete --- */
+function confirmDeleteShift() {
+  const ym   = document.getElementById('shiftUploadMonth')?.value;
+  const dept = currentShiftDept;
+  if (!ym || !shiftMeta[ym]?.[dept]) return;
+  if (!confirm('このシフト表を削除しますか？')) return;
+
+  delete shiftMeta[ym][dept];
+  if (Object.keys(shiftMeta[ym]).length === 0) delete shiftMeta[ym];
+  delete shiftImgCache[ym + '/' + dept];
+
+  if (useFirebase && db) {
+    const base = fbPath();
+    db.ref(base + '/shift-meta/' + ym + '/' + dept).remove();
+    db.ref(base + '/shift-imgs/' + ym + '/' + dept).remove();
+  }
+  try { localStorage.setItem(storagePrefix() + '_shift_meta', JSON.stringify(shiftMeta)); } catch(e) {}
+
+  document.getElementById('shiftUploadStatus').textContent = '🗑️ 削除しました';
+  renderShiftBar();
+  loadShiftPreview();
+}
+
+/* --- Render shift bar (below calendar) --- */
+function renderShiftBar() {
+  const bar   = document.getElementById('shiftBar');
+  const links = document.getElementById('shiftLinks');
+  if (!bar || !links) return;
+
+  const ym        = String(currentYear) + '-' + String(currentMonth + 1).padStart(2, '0');
+  const monthMeta = shiftMeta[ym] || {};
+
+  links.innerHTML = '';
+  SHIFT_DEPTS.forEach(dept => {
+    const has = !!(monthMeta[dept.key]);
+    const btn = document.createElement('button');
+    btn.className = 'shift-link-btn ' + (has ? 'has-shift' : 'no-shift');
+    btn.style.borderColor = has ? dept.color : '#ccc';
+    btn.style.color       = has ? dept.color : '#aaa';
+    btn.textContent = '📋 ' + dept.label;
+    btn.title = has ? dept.label + 'のシフト表を表示' : dept.label + 'は未登録';
+    if (has) btn.addEventListener('click', () => openShiftViewer(dept, ym));
+    links.appendChild(btn);
+  });
+}
+
+/* --- Viewer --- */
+function openShiftViewer(dept, ym) {
+  const [y, m] = ym.split('-');
+  document.getElementById('shiftModalTitle').textContent =
+    `📋 ${y}年${parseInt(m)}月 ${dept.label} シフト表`;
+  const img = document.getElementById('shiftModalImg');
+  img.src = ''; img.style.opacity = '0.3';
+  document.getElementById('shiftModal').classList.add('active');
+
+  fetchShiftImage(ym, dept.key, dataUrl => {
+    if (dataUrl) { img.src = dataUrl; img.style.opacity = '1'; }
+    else { img.alt = '画像の読み込みに失敗しました'; img.style.opacity = '1'; }
+  });
+}
+
+function closeShiftModal() {
+  document.getElementById('shiftModal').classList.remove('active');
+  setTimeout(() => { document.getElementById('shiftModalImg').src = ''; }, 300);
 }
 
 // ============================================================
