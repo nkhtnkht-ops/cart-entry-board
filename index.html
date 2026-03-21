@@ -874,33 +874,58 @@ function extractSearchTerms(addr) {
       }
 
       async function geocodeAddress(addr) {
-        const terms = extractSearchTerms(addr);
-        const pref = extractPrefecture(addr);
+  const terms = extractSearchTerms(addr);
+  const pref = extractPrefecture(addr);
 
-        for (const term of terms) {
-          try {
-            const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(term)}&count=10&language=ja&format=json`;
-            const res = await fetch(url);
-            if (!res.ok) continue;
-            const data = await res.json();
-            if (data.results && data.results.length > 0) {
-              let best = data.results[0];
-              if (pref) {
-                const prefBase = pref.replace(/[都道府県]$/, '');
-                for (const r of data.results) {
-                  if (r.admin1 && r.admin1.includes(prefBase)) {
-                    best = r; break;
-                  }
-                }
-              }
-              return { lat: Math.round(best.latitude * 100) / 100, lon: Math.round(best.longitude * 100) / 100, name: best.name };
-            }
-          } catch(e) {
-            console.error('Geocoding attempt failed for:', term, e);
+  // 1) Open-Meteo で試みる
+  for (const term of terms) {
+    try {
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(term)}&count=10&language=ja&format=json`;
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        let best = data.results[0];
+        if (pref) {
+          const prefBase = pref.replace(/[\u90fd\u9053\u5e9c\u770c]$/, '');
+          for (const r of data.results) {
+            if (r.admin1 && r.admin1.includes(prefBase)) { best = r; break; }
           }
         }
-        return null;
+        return { lat: Math.round(best.latitude * 100) / 100, lon: Math.round(best.longitude * 100) / 100, name: best.name };
       }
+    } catch(e) { console.error('Geocoding attempt failed for:', term, e); }
+  }
+
+  // 2) Open-Meteo全滅 → Nominatim (OpenStreetMap) フォールバック
+  const nominatimQueries = [addr];
+  const cityTerm = terms[0];
+  if (cityTerm && pref) nominatimQueries.push(pref + cityTerm);
+  else if (cityTerm) nominatimQueries.push(cityTerm);
+
+  for (const q of nominatimQueries) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=ja`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'CartEntryBoard/1.0' } });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data && data.length > 0) {
+        let best = data[0];
+        if (pref) {
+          const prefBase = pref.replace(/[\u90fd\u9053\u5e9c\u770c]$/, '');
+          for (const r of data) {
+            if (r.display_name && r.display_name.includes(prefBase)) { best = r; break; }
+          }
+        }
+        const lat = parseFloat(best.lat);
+        const lon = parseFloat(best.lon);
+        return { lat: Math.round(lat * 100) / 100, lon: Math.round(lon * 100) / 100, name: best.display_name.split(',')[0] };
+      }
+    } catch(e) { console.error('Nominatim fallback failed:', q, e); }
+  }
+
+  return null;
+}
 
 // ============================================================
 //  COURSE SEARCH UI
