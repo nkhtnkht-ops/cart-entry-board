@@ -823,50 +823,82 @@ const DEPT_MAP = {
 // ============================================================
 //  GEOCODING (Open-Meteo)
 // ============================================================
-function extractCityFromAddr(addr) {
-  // Remove prefecture
-  let s = addr.replace(/^.+?[都道府県]/, '');
-  // Handle 郡 (district) - extract town after it
-  if (/^.+?郡/.test(s)) {
-    s = s.replace(/^.+?郡/, '');
-  }
-  // Extract city/town/village/ward name
-  const m = s.match(/^(.+?)[市町村区]/);
-  return m ? m[1] : s.substring(0, 4);
-}
+function extractSearchTerms(addr) {
+        // Returns array of search terms to try, from most specific to least
+        const terms = [];
+        const prefRe = /^(東京都|北海道|(?:京都|大阪)府|.+?県)/;
+        const noPref = addr.replace(prefRe, '');
+        const pref = (addr.match(prefRe) || ['',''])[1];
 
-function extractPrefecture(addr) {
-  const m = addr.match(/^(.+?[都道府県])/);
-  return m ? m[1] : '';
-}
+        // For 市 addresses
+        const cityM = noPref.match(/^(.+?市)/);
+        if (cityM) {
+          terms.push(cityM[1]);
+          return terms;
+        }
 
-async function geocodeAddress(addr) {
-  const city = extractCityFromAddr(addr);
-  try {
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=5&language=ja&format=json`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Geocoding failed');
-    const data = await res.json();
-    if (data.results && data.results.length > 0) {
-      // Try to find a result in the same prefecture
-      const pref = extractPrefecture(addr);
-      let best = data.results[0];
-      if (pref) {
-        for (const r of data.results) {
-          if (r.admin1 && pref.includes(r.admin1.replace(/[都道府県]$/, ''))) {
-            best = r;
-            break;
+        // For 郡 addresses
+        const gunM = noPref.match(/^(.+?郡)(.+?[町村])/);
+        if (gunM) {
+          terms.push(gunM[2]);
+          terms.push(gunM[1].replace(/郡$/, ''));
+        }
+
+        // For direct 町/村 (no 郡)
+        const townM = noPref.match(/^(.+?[町村])/);
+        if (townM && terms.length === 0) {
+          terms.push(townM[1]);
+        }
+
+        // Fallback: prefecture name without suffix
+        if (pref) {
+          terms.push(pref.replace(/[都道府県]$/, ''));
+        }
+
+        if (terms.length === 0) {
+          terms.push(noPref.substring(0, 4));
+        }
+        return terms;
+      }
+
+      function extractCityFromAddr(addr) {
+        const terms = extractSearchTerms(addr);
+        return terms[0] || addr.substring(0, 4);
+      }
+
+      function extractPrefecture(addr) {
+        const m = addr.match(/^(東京都|北海道|(?:京都|大阪)府|.+?県)/);
+        return m ? m[1] : '';
+      }
+
+      async function geocodeAddress(addr) {
+        const terms = extractSearchTerms(addr);
+        const pref = extractPrefecture(addr);
+
+        for (const term of terms) {
+          try {
+            const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(term)}&count=10&language=ja&format=json`;
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (data.results && data.results.length > 0) {
+              let best = data.results[0];
+              if (pref) {
+                const prefBase = pref.replace(/[都道府県]$/, '');
+                for (const r of data.results) {
+                  if (r.admin1 && r.admin1.includes(prefBase)) {
+                    best = r; break;
+                  }
+                }
+              }
+              return { lat: Math.round(best.latitude * 100) / 100, lon: Math.round(best.longitude * 100) / 100, name: best.name };
+            }
+          } catch(e) {
+            console.error('Geocoding attempt failed for:', term, e);
           }
         }
+        return null;
       }
-      return { lat: Math.round(best.latitude * 100) / 100, lon: Math.round(best.longitude * 100) / 100, name: best.name };
-    }
-    return null;
-  } catch(e) {
-    console.error('Geocoding error:', e);
-    return null;
-  }
-}
 
 // ============================================================
 //  COURSE SEARCH UI
