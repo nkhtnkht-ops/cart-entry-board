@@ -476,20 +476,16 @@
       </div>
 
       <!-- Firebase -->
-      <div class="section-title">🔗 Firebase接続（複数端末リアルタイム共有）</div>
+      <div class="section-title">🔗 リアルタイム共有（Firebase）</div>
       <div class="firebase-section">
-        <label style="margin-top:0;">Firebase Realtime Database URL</label>
-        <input type="text" id="settFirebaseUrl" placeholder="例：https://your-project-id-default-rtdb.firebaseio.com">
-        <div class="hint">Firebase Consoleで作成したRealtime DatabaseのURLを貼り付けてください</div>
-
-        <label>API Key</label>
-        <input type="text" id="settFirebaseKey" placeholder="例：AIzaSy...">
-        <div class="hint">Firebaseプロジェクト設定 → ウェブアプリ → apiKey の値</div>
-
-        <div class="fb-status disconnected" id="fbStatusDisplay">
+        <div class="hint" style="margin-top:0; font-size:12px; color:#555;">全事業所共通のデータベースに自動接続されます。設定不要です。</div>
+        <div class="fb-status disconnected" id="fbStatusDisplay" style="margin-top:10px;">
           <span>⚠️</span> <span id="fbStatusText">Firebase未接続（ローカル保存モード）</span>
         </div>
       </div>
+      <!-- 互換性のため非表示で保持 -->
+      <input type="hidden" id="settFirebaseUrl">
+      <input type="hidden" id="settFirebaseKey">
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeSettings()">キャンセル</button>
@@ -1068,8 +1064,12 @@ function initFirebase() {
     fbListenersAttached = false;
   }
 
-  const url = siteConfig.firebaseUrl;
-  const key = siteConfig.firebaseKey;
+  // 固定のFirebase認証情報（全事業所共通・変更不要）
+  const DEFAULT_FB_URL = 'https://cart-entry-board-615df-default-rtdb.asia-southeast1.firebasedatabase.app';
+  const DEFAULT_FB_KEY = 'AIzaSyDz97zuynJ4wagSMSgLOa1C7sDj2m6PruA';
+
+  const url = siteConfig.firebaseUrl || DEFAULT_FB_URL;
+  const key = siteConfig.firebaseKey || DEFAULT_FB_KEY;
 
   if (!url || !key) {
     useFirebase = false;
