@@ -147,7 +147,12 @@
     display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
   }
   .modal-body .coord-row label { margin-top: 14px; }
-  .modal-body .firebase-section {
+  .modal-body .notif-section {
+    background: #e8f4fd; border: 1px solid #90caf9; border-radius: 8px;
+    padding: 14px; margin-top: 6px;
+  }
+  .modal-body .notif-section details summary { user-select: none; }
+    .modal-body .firebase-section {
     background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px;
     padding: 14px; margin-top: 6px;
   }
@@ -475,7 +480,31 @@
         <div class="hint">Google Mapでコースの位置を右クリック → 座標をコピーできます</div>
       </div>
 
-      <!-- Firebase -->
+      <!-- メール通知 -->
+      <div class="section-title">📧 メール通知設定</div>
+      <div class="notif-section">
+        <label>通知先メールアドレス</label>
+        <input type="email" id="settNotifEmail" placeholder="例：manager@example.com">
+        <div class="hint">乗入れ可・不可が変更されたとき、このアドレスに通知メールを送信します。</div>
+        <details style="margin-top:10px;">
+          <summary style="cursor:pointer; font-size:12px; color:#666;">▶ EmailJS 送信設定（初回のみ必要）</summary>
+          <div style="margin-top:8px; padding:10px; background:#f5f5f5; border-radius:6px;">
+            <div class="hint" style="margin-top:0; color:#555;">
+              <a href="https://www.emailjs.com" target="_blank" style="color:#2a7ae2;">EmailJS</a> の無料アカウントを作成し、下記3つの値を入力してください。
+            </div>
+            <label style="margin-top:8px;">Service ID</label>
+            <input type="text" id="settEmailjsServiceId" placeholder="例：service_xxxxxxx">
+            <label>Template ID</label>
+            <input type="text" id="settEmailjsTemplateId" placeholder="例：template_xxxxxxx">
+            <label>Public Key</label>
+            <input type="text" id="settEmailjsPublicKey" placeholder="例：XXXXXXXXXXXXXXXXXXXXXX">
+          </div>
+        </details>
+        <button type="button" onclick="testNotifEmail()" style="margin-top:10px; padding:6px 14px; background:#2a7ae2; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;">📨 テスト送信</button>
+        <span id="notifTestResult" style="font-size:12px; margin-left:8px;"></span>
+      </div>
+
+            <!-- Firebase -->
       <div class="section-title">🔗 リアルタイム共有（Firebase）</div>
       <div class="firebase-section">
         <div class="hint" style="margin-top:0; font-size:12px; color:#555;">全事業所共通のデータベースに自動接続されます。設定不要です。</div>
@@ -597,6 +626,7 @@
 <!-- ===== Firebase SDK (compat v9) ===== -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <script>
 // ============================================================
@@ -797,8 +827,10 @@ let weatherCache = {};
 let siteConfig = {
   courseName: '', companyName: '', areaName: '',
   lat: null, lon: null, courseAddr: '',
-  firebaseUrl: '', firebaseKey: ''
+  firebaseUrl: '', firebaseKey: '',
+  notifEmail: '', emailjsServiceId: '', emailjsTemplateId: '', emailjsPublicKey: ''
 };
+let _prevStatusBeforeSave = undefined;
 
 let firebaseApp = null;
 let db = null;
@@ -1201,6 +1233,68 @@ function saveCartData() {
   }
 }
 
+// ============================================================
+//  EMAIL NOTIFICATION
+// ============================================================
+async function sendCartNotification(date, status) {
+  const notifEmail  = siteConfig.notifEmail;
+  const ejsKey      = siteConfig.emailjsPublicKey;
+  const ejsService  = siteConfig.emailjsServiceId;
+  const ejsTemplate = siteConfig.emailjsTemplateId;
+  if (!notifEmail || !ejsKey || !ejsService || !ejsTemplate) return;
+
+  const statusLabel = status === 'ok' ? '✅ 乗入れ可' : '🚫 乗入れ不可';
+  const courseName  = siteConfig.courseName || 'コース未設定';
+  const companyName = siteConfig.companyName || '';
+  const now         = new Date();
+  const dateStr     = now.getFullYear() + '/' + (now.getMonth()+1) + '/' + now.getDate();
+  const timeStr     = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+  try {
+    emailjs.init(ejsKey);
+    await emailjs.send(ejsService, ejsTemplate, {
+      to_email:    notifEmail,
+      course_name: companyName ? companyName + ' ' + courseName : courseName,
+      status:      statusLabel,
+      target_date: date,
+      change_date: dateStr,
+      change_time: timeStr,
+    });
+    console.log('通知メール送信完了');
+  } catch(e) {
+    console.error('通知メール送信エラー:', e);
+  }
+}
+
+async function testNotifEmail() {
+  const resultEl    = document.getElementById('notifTestResult');
+  const notifEmail  = document.getElementById('settNotifEmail').value.trim();
+  const ejsKey      = document.getElementById('settEmailjsPublicKey').value.trim();
+  const ejsService  = document.getElementById('settEmailjsServiceId').value.trim();
+  const ejsTemplate = document.getElementById('settEmailjsTemplateId').value.trim();
+  if (!notifEmail || !ejsKey || !ejsService || !ejsTemplate) {
+    resultEl.textContent = '⚠️ 全項目を入力してください';
+    resultEl.style.color = '#c0392b'; return;
+  }
+  resultEl.textContent = '送信中...'; resultEl.style.color = '#666';
+  try {
+    emailjs.init(ejsKey);
+    const now = new Date();
+    await emailjs.send(ejsService, ejsTemplate, {
+      to_email:    notifEmail,
+      course_name: document.getElementById('settCourseName').value.trim() || siteConfig.courseName || 'テスト',
+      status:      '📨 テスト送信',
+      target_date: now.toISOString().split('T')[0],
+      change_date: now.getFullYear() + '/' + (now.getMonth()+1) + '/' + now.getDate(),
+      change_time: String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0'),
+    });
+    resultEl.textContent = '✅ 送信成功！'; resultEl.style.color = '#27ae60';
+  } catch(e) {
+    resultEl.textContent = '❌ 送信失敗: ' + (e.text || e.message || e);
+    resultEl.style.color = '#c0392b';
+  }
+}
+
 function saveMessages() {
   localStorage.setItem(storagePrefix() + '_msg', JSON.stringify(messages));
   if (useFirebase && db) {
@@ -1266,6 +1360,10 @@ function openSettings() {
   document.getElementById('settLon').value = siteConfig.lon || '';
   document.getElementById('settFirebaseUrl').value = siteConfig.firebaseUrl || '';
   document.getElementById('settFirebaseKey').value = siteConfig.firebaseKey || '';
+  document.getElementById('settNotifEmail').value = siteConfig.notifEmail || '';
+  document.getElementById('settEmailjsServiceId').value = siteConfig.emailjsServiceId || '';
+  document.getElementById('settEmailjsTemplateId').value = siteConfig.emailjsTemplateId || '';
+  document.getElementById('settEmailjsPublicKey').value = siteConfig.emailjsPublicKey || '';
   document.getElementById('settingsModal').classList.add('active');
 }
 
@@ -1297,6 +1395,10 @@ function saveSettings() {
 
   siteConfig.firebaseUrl = document.getElementById('settFirebaseUrl').value.trim();
   siteConfig.firebaseKey = document.getElementById('settFirebaseKey').value.trim();
+  siteConfig.notifEmail = document.getElementById('settNotifEmail').value.trim();
+  siteConfig.emailjsServiceId = document.getElementById('settEmailjsServiceId').value.trim();
+  siteConfig.emailjsTemplateId = document.getElementById('settEmailjsTemplateId').value.trim();
+  siteConfig.emailjsPublicKey = document.getElementById('settEmailjsPublicKey').value.trim();
 
   saveConfigStorage();
   initFirebase();
@@ -1394,6 +1496,7 @@ function selectDate(key) {
 
 function selectStatus(status) {
   if (!selectedDate) return;
+  _prevStatusBeforeSave = (cartData[selectedDate] || {}).status;
   if (status === 'clear') {
     if (cartData[selectedDate]) {
       delete cartData[selectedDate].status;
@@ -1424,6 +1527,15 @@ function saveDetail() {
   saveCartData();
   renderCalendar();
   updateTodayStatus();
+
+  // ステータスが変更されていたらメール通知
+  const newStatus = (cartData[selectedDate] || {}).status;
+  if (_prevStatusBeforeSave !== undefined && newStatus !== _prevStatusBeforeSave
+      && (newStatus === 'ok' || newStatus === 'ng')) {
+    sendCartNotification(selectedDate, newStatus);
+  }
+  _prevStatusBeforeSave = undefined;
+
   const btn = document.querySelector('.detail-panel .save-btn');
   btn.textContent = '✅ 保存しました！';
   setTimeout(() => btn.textContent = '💾 保存', 1500);
