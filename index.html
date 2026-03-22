@@ -1328,7 +1328,19 @@ function attachFirebaseListeners() {
     updateConnBadge(false);
   });
 
-  fbListenersAttached = true;
+  
+  // Firebaseから共有設定を読み込む（メールアドレス・EmailJS等を他端末と同期）
+  db.ref(path + '/config').once('value', snap => {
+    const val = snap.val();
+    if (!val) return;
+    const keep = { courseName: siteConfig.courseName, firebaseUrl: siteConfig.firebaseUrl, firebaseKey: siteConfig.firebaseKey };
+    Object.assign(siteConfig, val);
+    Object.assign(siteConfig, keep);
+    saveConfigStorage();
+    applyConfig();
+  }, err => console.error('設定読込エラー:', err));
+
+fbListenersAttached = true;
 }
 
 function updateConnBadge(online) {
@@ -1562,6 +1574,27 @@ function saveSettings() {
 
   saveConfigStorage();
   initFirebase();
+
+  // 設定をFirebaseにも保存（他端末と共有）
+  if (useFirebase && db) {
+    const sharedConf = {
+      companyName:       siteConfig.companyName,
+      areaName:          siteConfig.areaName,
+      lat:               siteConfig.lat,
+      lon:               siteConfig.lon,
+      courseAddr:        siteConfig.courseAddr,
+      notifEmail:        siteConfig.notifEmail,
+      notifCc1:          siteConfig.notifCc1,
+      notifCc2:          siteConfig.notifCc2,
+      notifCc3:          siteConfig.notifCc3,
+      notifCc4:          siteConfig.notifCc4,
+      notifCc5:          siteConfig.notifCc5,
+      emailjsServiceId:  siteConfig.emailjsServiceId,
+      emailjsTemplateId: siteConfig.emailjsTemplateId,
+      emailjsPublicKey:  siteConfig.emailjsPublicKey,
+    };
+    db.ref(fbPath() + '/config').set(sharedConf).catch(e => console.error('設定同期エラー:', e));
+  }
 
   const newCourseId = courseId();
   if (oldCourseId !== newCourseId) {
