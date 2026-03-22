@@ -1573,38 +1573,52 @@ function saveSettings() {
   siteConfig.emailjsPublicKey = document.getElementById('settEmailjsPublicKey').value.trim();
 
   saveConfigStorage();
-  initFirebase();
-
-  // 設定をFirebaseにも保存（他端末と共有）
-  if (useFirebase && db) {
-    const sharedConf = {
-      companyName:       siteConfig.companyName,
-      areaName:          siteConfig.areaName,
-      lat:               siteConfig.lat,
-      lon:               siteConfig.lon,
-      courseAddr:        siteConfig.courseAddr,
-      notifEmail:        siteConfig.notifEmail,
-      notifCc1:          siteConfig.notifCc1,
-      notifCc2:          siteConfig.notifCc2,
-      notifCc3:          siteConfig.notifCc3,
-      notifCc4:          siteConfig.notifCc4,
-      notifCc5:          siteConfig.notifCc5,
-      emailjsServiceId:  siteConfig.emailjsServiceId,
-      emailjsTemplateId: siteConfig.emailjsTemplateId,
-      emailjsPublicKey:  siteConfig.emailjsPublicKey,
-    };
-    db.ref(fbPath() + '/config').set(sharedConf).catch(e => console.error('設定同期エラー:', e));
-  }
 
   const newCourseId = courseId();
   if (oldCourseId !== newCourseId) {
+    // コースが変わった場合：メール設定をリセットし、旧コースの設定を新コースに引き継がない
+    siteConfig.notifEmail        = '';
+    siteConfig.notifCc1          = '';
+    siteConfig.notifCc2          = '';
+    siteConfig.notifCc3          = '';
+    siteConfig.notifCc4          = '';
+    siteConfig.notifCc5          = '';
+    siteConfig.emailjsServiceId  = '';
+    siteConfig.emailjsTemplateId = '';
+    siteConfig.emailjsPublicKey  = '';
+    saveConfigStorage();
+    // カート・メッセージ・シフトもリセット
     cartData = {};
     messages = [];
     shiftMeta = {};
     shiftImgCache = {};
+    // Firebaseを新コースで再初期化（attachFirebaseListenersで新コースの設定を読み込む）
+    initFirebase();
     loadData();
     loadShiftMeta();
     renderShiftBar();
+  } else {
+    // 同じコース内での設定変更：Firebaseに保存して他端末と共有
+    initFirebase();
+    if (useFirebase && db) {
+      const sharedConf = {
+        companyName:       siteConfig.companyName,
+        areaName:          siteConfig.areaName,
+        lat:               siteConfig.lat,
+        lon:               siteConfig.lon,
+        courseAddr:        siteConfig.courseAddr,
+        notifEmail:        siteConfig.notifEmail,
+        notifCc1:          siteConfig.notifCc1,
+        notifCc2:          siteConfig.notifCc2,
+        notifCc3:          siteConfig.notifCc3,
+        notifCc4:          siteConfig.notifCc4,
+        notifCc5:          siteConfig.notifCc5,
+        emailjsServiceId:  siteConfig.emailjsServiceId,
+        emailjsTemplateId: siteConfig.emailjsTemplateId,
+        emailjsPublicKey:  siteConfig.emailjsPublicKey,
+      };
+      db.ref(fbPath() + '/config').set(sharedConf).catch(e => console.error('設定同期エラー:', e));
+    }
   }
 
   applyConfig();
