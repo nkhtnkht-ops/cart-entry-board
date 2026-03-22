@@ -1381,6 +1381,12 @@ async function sendCartNotification(date, status, note = '') {
   const ejsTemplate = siteConfig.emailjsTemplateId;
   if (!notifEmail || !ejsKey || !ejsService || !ejsTemplate) return;
 
+  // 全宛先をToにまとめる（Office365のCC制限を回避）
+  const ccList = [siteConfig.notifCc1, siteConfig.notifCc2, siteConfig.notifCc3,
+                  siteConfig.notifCc4, siteConfig.notifCc5]
+                   .map(v => (v || '').trim()).filter(v => v);
+  const allRecipients = [siteConfig.notifEmail, ...ccList].join(',');
+
   const statusLabel = status === 'ok' ? '✅ 乗入れ可' : '🚫 乗入れ不可';
   const courseName  = siteConfig.courseName || 'コース未設定';
   const companyName = siteConfig.companyName || '';
@@ -1391,7 +1397,7 @@ async function sendCartNotification(date, status, note = '') {
   try {
     emailjs.init(ejsKey);
     await emailjs.send(ejsService, ejsTemplate, {
-      to_email:    notifEmail,
+            to_email:    allRecipients,
       course_name: companyName ? companyName + ' ' + courseName : courseName,
       status:      statusLabel,
       target_date: date,
@@ -1417,14 +1423,14 @@ async function testNotifEmail() {
   }
   const ccList=['settNotifCc1','settNotifCc2','settNotifCc3','settNotifCc4','settNotifCc5']
     .map(id=>(document.getElementById(id)?.value||'').trim()).filter(v=>v);
-  const ccEmail=ccList.join(',');
+  const allRecipients = [notifEmail, ...ccList].join(',');
   resultEl.textContent = '送信中...'; resultEl.style.color = '#666';
   try {
     emailjs.init(ejsKey);
     const now = new Date();
     await emailjs.send(ejsService, ejsTemplate, {
-      to_email:    notifEmail,
-      cc_email:    ccEmail,
+      to_email:    allRecipients,
+      cc_email:    '',
       course_name: document.getElementById('settCourseName').value.trim() || siteConfig.courseName || 'テスト',
       status:      '📨 テスト送信',
       target_date: now.toISOString().split('T')[0],
