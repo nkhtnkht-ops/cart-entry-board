@@ -1374,7 +1374,7 @@ function saveCartData() {
 // ============================================================
 //  EMAIL NOTIFICATION
 // ============================================================
-async function sendCartNotification(date, status) {
+async function sendCartNotification(date, status, note = '') {
   const notifEmail  = siteConfig.notifEmail;
   const ejsKey      = siteConfig.emailjsPublicKey;
   const ejsService  = siteConfig.emailjsServiceId;
@@ -1397,6 +1397,7 @@ async function sendCartNotification(date, status) {
       target_date: date,
       change_date: dateStr,
       change_time: timeStr,
+      note:        note || '（なし）',
     });
     console.log('通知メール送信完了');
   } catch(e) {
@@ -1693,7 +1694,7 @@ function saveDetail() {
   // undefined = 変更前が未登録 → 新規登録でも通知する
   if (_prevStatusBeforeSave !== _STATUS_NOT_SET && newStatus !== _prevStatusBeforeSave
       && (newStatus === 'ok' || newStatus === 'ng')) {
-    sendCartNotification(selectedDate, newStatus);
+    sendCartNotification(selectedDate, newStatus, cartData[selectedDate]?.note || '');
   }
   _prevStatusBeforeSave = _STATUS_NOT_SET;
 
