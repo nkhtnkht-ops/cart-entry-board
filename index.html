@@ -614,7 +614,7 @@
         <img id="shiftPreviewImg" src="" style="display:none;" alt="シフトプレビュー">
       </div>
       <div class="shift-upload-btns">
-        <input type="file" id="shiftFileInput" accept="image/*" style="display:none;" onchange="handleShiftFile(event)">
+        <input type="file" id="shiftFileInput" accept="image/*,application/pdf" style="display:none;" onchange="handleShiftFile(event)">
         <button onclick="document.getElementById('shiftFileInput').click()" style="background:#1976d2; color:#fff;">📸 画像をアップロード</button>
         <button id="shiftDeleteBtn" onclick="confirmDeleteShift()" style="background:#f44336; color:#fff; opacity:0.4;" disabled>🗑️ 削除</button>
       </div>
@@ -759,6 +759,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
 // ============================================================
@@ -2023,10 +2024,62 @@ function fetchShiftImage(ym, dept, cb) {
 function handleShiftFile(e) {
   const file = e.target.files[0];
   if (!file) return;
-  if (!file.type.startsWith('image/')) { alert('画像ファイル（JPG・PNG）を選択してください'); return; }
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  if (!file.type.startsWith('image/') && !isPdf) { alert('画像（JPG・PNG）またはPDFファイルを選択してください'); return; }
   const ym     = document.getElementById('shiftUploadMonth').value;
   const dept   = currentShiftDept;
   const status = document.getElementById('shiftUploadStatus');
+
+  if (isPdf) {
+    status.textContent = '⏳ PDFを変換中...';
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        if (typeof pdfjsLib === 'undefined') { alert('PDF.jsの読み込みに失敗しました。ページを再読み込みしてください。'); return; }
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const typedArray = new Uint8Array(ev.target.result);
+        const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement('canvas');
+        canvas.width  = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const kb = Math.round(dataUrl.length * 0.75 / 1024);
+        if (kb > 800 && !confirm(`変換後のサイズが大きめです（約${kb}KB）。このまま保存しますか？`)) {
+          status.textContent = ''; e.target.value = ''; return;
+        }
+        const meta = { ts: Date.now(), name: file.name + ' (PDF→画像)', kb };
+        if (!shiftMeta[ym]) shiftMeta[ym] = {};
+        shiftMeta[ym][dept] = meta;
+        shiftImgCache[ym + '/' + dept] = dataUrl;
+        if (useFirebase && db) {
+          const base = fbPath();
+          db.ref(base + '/shift-meta/' + ym + '/' + dept).set(meta)
+            .then(() => db.ref(base + '/shift-imgs/' + ym + '/' + dept).set(dataUrl))
+            .then(() => { status.textContent = `✅ PDF変換・保存しました（${kb}KB・1ページ目）`; })
+            .catch(err => { console.error('shift save error:', err); status.textContent = '❌ 保存に失敗しました'; });
+        } else {
+          try {
+            localStorage.setItem(storagePrefix() + '_shift_meta', JSON.stringify(shiftMeta));
+            localStorage.setItem(storagePrefix() + '_shift_imgs', JSON.stringify(shiftImgCache));
+          } catch(err) {}
+          status.textContent = `✅ PDF変換・ローカル保存しました（${kb}KB・1ページ目）`;
+        }
+        renderShiftBar();
+        loadShiftPreview();
+        e.target.value = '';
+      } catch(err) {
+        console.error('PDF変換エラー:', err);
+        status.textContent = '❌ PDF変換に失敗しました';
+        e.target.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    return;
+  }
+
   status.textContent = '⏳ 画像を処理中...';
 
   compressShiftImage(file, 1400, 0.82, dataUrl => {
