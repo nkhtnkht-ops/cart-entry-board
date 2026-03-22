@@ -956,7 +956,8 @@ let siteConfig = {
   firebaseUrl: '', firebaseKey: '',
   notifEmail: '', emailjsServiceId: '', emailjsTemplateId: '', emailjsPublicKey: ''
 };
-let _prevStatusBeforeSave = undefined;
+const _STATUS_NOT_SET = '__notset__';
+let _prevStatusBeforeSave = _STATUS_NOT_SET;
 
 let firebaseApp = null;
 let db = null;
@@ -1667,11 +1668,13 @@ function saveDetail() {
 
   // ステータスが変更されていたらメール通知
   const newStatus = (cartData[selectedDate] || {}).status;
-  if (_prevStatusBeforeSave !== undefined && newStatus !== _prevStatusBeforeSave
+  // _STATUS_NOT_SET = selectStatusが未呼出（ボタン未操作）→ 通知しない
+  // undefined = 変更前が未登録 → 新規登録でも通知する
+  if (_prevStatusBeforeSave !== _STATUS_NOT_SET && newStatus !== _prevStatusBeforeSave
       && (newStatus === 'ok' || newStatus === 'ng')) {
     sendCartNotification(selectedDate, newStatus);
   }
-  _prevStatusBeforeSave = undefined;
+  _prevStatusBeforeSave = _STATUS_NOT_SET;
 
   const btn = document.querySelector('.detail-panel .save-btn');
   btn.textContent = '✅ 保存しました！';
