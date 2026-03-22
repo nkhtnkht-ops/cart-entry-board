@@ -1385,7 +1385,7 @@ async function sendCartNotification(date, status, note = '') {
   const courseName  = siteConfig.courseName || 'コース未設定';
   const companyName = siteConfig.companyName || '';
   const now         = new Date();
-  const dateStr     = now.getFullYear() + '/' + (now.getMonth()+1) + '/' + now.getDate();
+    const dateStr      = now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日';
   const timeStr     = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
 
   try {
