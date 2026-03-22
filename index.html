@@ -1600,7 +1600,11 @@ function saveSettings() {
   if (oldCourseId !== newCourseId) {
     cartData = {};
     messages = [];
+    shiftMeta = {};
+    shiftImgCache = {};
     loadData();
+    loadShiftMeta();
+    renderShiftBar();
   }
 
   applyConfig();
