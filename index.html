@@ -1293,6 +1293,8 @@ function initFirebase() {
 function attachFirebaseListeners() {
   if (!db || fbListenersAttached) return;
   const path = fbPath();
+  let cartFirstSnap = true;
+  let msgFirstSnap = true;
 
   db.ref(path + '/cart').on('value', snap => {
     const val = snap.val();
@@ -1302,10 +1304,16 @@ function attachFirebaseListeners() {
       renderCalendar();
       updateTodayStatus();
     } else {
-      if (Object.keys(cartData).length > 0) {
+      if (cartFirstSnap && Object.keys(cartData).length > 0) {
         db.ref(path + '/cart').set(cartData).catch(e => console.error('初回同期エラー(cart):', e));
+      } else {
+        cartData = {};
+        localStorage.setItem(storagePrefix() + '_cart', JSON.stringify(cartData));
+        renderCalendar();
+        updateTodayStatus();
       }
     }
+    cartFirstSnap = false;
   }, err => {
     console.error('Firebase cart読取エラー:', err);
     updateConnBadge(false);
@@ -1318,12 +1326,17 @@ function attachFirebaseListeners() {
       localStorage.setItem(storagePrefix() + '_msg', JSON.stringify(messages));
       renderMessages();
     } else {
-      if (messages.length > 0) {
+      if (msgFirstSnap && messages.length > 0) {
         const msgObj = {};
         messages.forEach(m => { msgObj['m' + m.id] = m; });
         db.ref(path + '/messages').set(msgObj).catch(e => console.error('初回同期エラー(msg):', e));
+      } else {
+        messages = [];
+        localStorage.setItem(storagePrefix() + '_msg', JSON.stringify(messages));
+        renderMessages();
       }
     }
+    msgFirstSnap = false;
   }, err => {
     console.error('Firebase msg読取エラー:', err);
     updateConnBadge(false);
