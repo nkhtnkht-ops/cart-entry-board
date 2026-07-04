@@ -1296,6 +1296,18 @@ function attachFirebaseListeners() {
   let cartFirstSnap = true;
   let msgFirstSnap = true;
 
+  // このDBが過去に一度でも初期化済みかを示すマーカー。
+  // マーカーが立っている（＝過去にデータが存在した）DBで空スナップショットが返る場合は、
+  // 「他端末で意図的に削除された」状態なので、ローカルの古いデータを再シードしない（削除復活バグの防止）。
+  // マーカーが無い真に新規のDBに対してのみ、初回に一度だけローカルデータをシードする。
+  let dbInitialized = null; // null=未取得, true/false=取得済み
+  db.ref(path + '/_initialized').once('value', s => { dbInitialized = s.val() === true; },
+    err => { console.error('初期化マーカー読取エラー:', err); dbInitialized = true; });
+  const markInitialized = () => {
+    dbInitialized = true;
+    db.ref(path + '/_initialized').set(true).catch(e => console.error('初期化マーカー書込エラー:', e));
+  };
+
   db.ref(path + '/cart').on('value', snap => {
     const val = snap.val();
     if (val) {
@@ -1303,9 +1315,13 @@ function attachFirebaseListeners() {
       localStorage.setItem(storagePrefix() + '_cart', JSON.stringify(cartData));
       renderCalendar();
       updateTodayStatus();
+      if (dbInitialized === false) markInitialized();
     } else {
-      if (cartFirstSnap && Object.keys(cartData).length > 0) {
-        db.ref(path + '/cart').set(cartData).catch(e => console.error('初回同期エラー(cart):', e));
+      // 再シードは「真に新規のDB（マーカー無し）」かつ「初回スナップショット」かつ「ローカルにデータあり」の場合のみ。
+      if (cartFirstSnap && dbInitialized === false && Object.keys(cartData).length > 0) {
+        db.ref(path + '/cart').set(cartData)
+          .then(markInitialized)
+          .catch(e => console.error('初回同期エラー(cart):', e));
       } else {
         cartData = {};
         localStorage.setItem(storagePrefix() + '_cart', JSON.stringify(cartData));
@@ -1325,11 +1341,15 @@ function attachFirebaseListeners() {
       messages = Object.values(val);
       localStorage.setItem(storagePrefix() + '_msg', JSON.stringify(messages));
       renderMessages();
+      if (dbInitialized === false) markInitialized();
     } else {
-      if (msgFirstSnap && messages.length > 0) {
+      // 再シードは「真に新規のDB（マーカー無し）」かつ「初回スナップショット」かつ「ローカルにデータあり」の場合のみ。
+      if (msgFirstSnap && dbInitialized === false && messages.length > 0) {
         const msgObj = {};
         messages.forEach(m => { msgObj['m' + m.id] = m; });
-        db.ref(path + '/messages').set(msgObj).catch(e => console.error('初回同期エラー(msg):', e));
+        db.ref(path + '/messages').set(msgObj)
+          .then(markInitialized)
+          .catch(e => console.error('初回同期エラー(msg):', e));
       } else {
         messages = [];
         localStorage.setItem(storagePrefix() + '_msg', JSON.stringify(messages));
@@ -1388,12 +1408,22 @@ function loadData() {
   } catch(e) {}
 }
 
-function saveCartData() {
+// changedKey を渡すと、その日付ノードのみを個別に書き込む（他端末の他日付を上書きしない）。
+// cartData[changedKey] が存在しなければ null を書いて当該日付のみ削除する。
+// changedKey 省略時のみ従来どおり全体を set（初期同期など）。
+function saveCartData(changedKey) {
   localStorage.setItem(storagePrefix() + '_cart', JSON.stringify(cartData));
   if (useFirebase && db) {
-    db.ref(fbPath() + '/cart').set(cartData).catch(e => {
-      console.error('Firebase cart書込エラー:', e);
-    });
+    if (changedKey) {
+      const val = Object.prototype.hasOwnProperty.call(cartData, changedKey) ? cartData[changedKey] : null;
+      db.ref(fbPath() + '/cart/' + changedKey).set(val).catch(e => {
+        console.error('Firebase cart書込エラー:', e);
+      });
+    } else {
+      db.ref(fbPath() + '/cart').set(cartData).catch(e => {
+        console.error('Firebase cart書込エラー:', e);
+      });
+    }
   }
 }
 
@@ -1470,14 +1500,27 @@ async function testNotifEmail() {
   }
 }
 
-function saveMessages() {
+// change: { add: message } または { removeId: id } を渡すと、
+// 該当メッセージのみを個別に書き込む（他端末が投稿した他メッセージを上書きしない）。
+// change 省略時のみ従来どおり全体を set（初期同期など）。
+function saveMessages(change) {
   localStorage.setItem(storagePrefix() + '_msg', JSON.stringify(messages));
   if (useFirebase && db) {
-    const msgObj = {};
-    messages.forEach(m => { msgObj['m' + m.id] = m; });
-    db.ref(fbPath() + '/messages').set(msgObj).catch(e => {
-      console.error('Firebase msg書込エラー:', e);
-    });
+    if (change && change.add) {
+      db.ref(fbPath() + '/messages/m' + change.add.id).set(change.add).catch(e => {
+        console.error('Firebase msg書込エラー:', e);
+      });
+    } else if (change && change.removeId !== undefined) {
+      db.ref(fbPath() + '/messages/m' + change.removeId).set(null).catch(e => {
+        console.error('Firebase msg削除エラー:', e);
+      });
+    } else {
+      const msgObj = {};
+      messages.forEach(m => { msgObj['m' + m.id] = m; });
+      db.ref(fbPath() + '/messages').set(msgObj).catch(e => {
+        console.error('Firebase msg書込エラー:', e);
+      });
+    }
   }
 }
 
@@ -1486,8 +1529,8 @@ function saveMessages() {
 // ============================================================
 function applyConfig() {
   const club = siteConfig.companyName
-    ? `${siteConfig.companyName}<br>${siteConfig.courseName}`
-    : (siteConfig.courseName || 'ゴルフ場未設定');
+    ? `${escHtml(siteConfig.companyName)}<br>${escHtml(siteConfig.courseName)}`
+    : (escHtml(siteConfig.courseName) || 'ゴルフ場未設定');
   document.getElementById('headerClubName').innerHTML = club;
   document.title = `カート乗入れ共有ボード｜${siteConfig.courseName || 'ゴルフ場'}`;
   document.getElementById('weatherHeader').textContent =
@@ -1689,7 +1732,7 @@ function renderCalendar() {
       wx = `<div class="weather-mini"><span class="wx-icon">${w.icon}</span> ${w.tMax}°/${w.tMin}°</div>`;
     }
 
-        const scheduleText = data.schedule ? `<div class="schedule-mini">📋 ${data.schedule.replace(/\n/g,'<br>')}</div>` : '';
+        const scheduleText = data.schedule ? `<div class="schedule-mini">📋 ${escHtml(data.schedule).replace(/\n/g,'<br>')}</div>` : '';
     html += `<div class="cal-cell ${key===tk?'today':''} ${key===selectedDate?'selected-cell':''}" onclick="selectDate('${key}')">
       <div class="day-num ${dowCls}">${d}</div>${badge}${wx}${scheduleText}</div>`;
   }
@@ -1755,7 +1798,7 @@ function saveDetail() {
   if (scheduleVal) cartData[selectedDate].schedule = scheduleVal;
   else delete cartData[selectedDate].schedule;
   cartData[selectedDate].note = document.getElementById('detailNote').value;
-  saveCartData();
+  saveCartData(selectedDate);
   renderCalendar();
   updateTodayStatus();
 
@@ -1887,7 +1930,7 @@ function renderMessages() {
     const dc = DEPT_MAP[m.dept] || 'course';
     html += `<div class="msg-item dept-${dc}">
       <div class="msg-meta">
-        <span><span class="msg-dept-tag tag-${dc}">${m.dept}</span> ${ts}</span>
+        <span><span class="msg-dept-tag tag-${dc}">${escHtml(m.dept)}</span> ${ts}</span>
         <span class="msg-delete" onclick="deleteMessage(${m.id})" title="削除">✕</span>
       </div>
       <div class="msg-text">${escHtml(m.text)}</div>
@@ -1900,8 +1943,9 @@ function postMessage() {
   const dept = document.getElementById('msgDept').value;
   const text = document.getElementById('msgText').value.trim();
   if (!text) { alert('連絡事項を入力してください'); return; }
-  messages.push({ id: Date.now(), dept, text });
-  saveMessages();
+  const msg = { id: Date.now(), dept, text };
+  messages.push(msg);
+  saveMessages({ add: msg });
   renderMessages();
   document.getElementById('msgText').value = '';
 }
@@ -1909,11 +1953,12 @@ function postMessage() {
 function deleteMessage(id) {
   if (!confirm('この連絡を削除しますか？')) return;
   messages = messages.filter(m => m.id !== id);
-  saveMessages();
+  saveMessages({ removeId: id });
   renderMessages();
 }
 
 function escHtml(s) {
+  if (s === null || s === undefined) return '';
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
